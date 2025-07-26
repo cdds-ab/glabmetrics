@@ -2,7 +2,7 @@
 
 from typing import Dict, Any
 from datetime import datetime
-from jinja2 import Template
+from jinja2 import Template, Environment
 import json
 
 
@@ -27,6 +27,10 @@ class HTMLReportGenerator:
         """Prepare data for HTML template."""
         system_stats = analysis_data.get("system_stats")
         repositories = analysis_data.get("repositories", [])
+
+        # Handle missing system_stats
+        if not system_stats:
+            return self._get_empty_template_data(analysis_data)
 
         # Convert dataclass to dict for template
         system_dict = {
@@ -147,6 +151,8 @@ class HTMLReportGenerator:
             "language_distribution_json": json.dumps(system_dict["language_distribution"]),
             "fetch_heatmap_json": json.dumps(system_dict["fetch_heatmap_data"]),
             "analysis_timestamp": analysis_data.get("analysis_timestamp", datetime.now().isoformat()),
+            "gitlab_version": analysis_data.get("gitlab_version", "Unknown"),
+            "collection_timestamp": analysis_data.get("collection_timestamp", ""),
             "total_storage_gb": sum(storage_breakdown.values()),
         }
 
@@ -169,6 +175,47 @@ class HTMLReportGenerator:
         </body>
         </html>
         """
+
+    def _get_empty_template_data(self, analysis_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate template data for empty/missing system stats."""
+        return {
+            "system_stats": {
+                "total_repositories": 0,
+                "total_size_gb": 0.0,
+                "total_commits": 0,
+                "orphaned_repositories": 0,
+                "repositories_with_lfs": 0,
+                "total_lfs_size_gb": 0.0,
+                "total_artifacts_size_gb": 0.0,
+                "total_packages_size_gb": 0.0,
+                "total_container_registry_size_gb": 0.0,
+                "optimization_recommendations": [],
+                "avg_complexity_score": 0.0,
+                "avg_health_score": 0.0,
+                "pipeline_success_rate": 0.0,
+                "language_distribution": {},
+                "default_branch_stats": {},
+                "fetch_heatmap_data": {},
+            },
+            "repositories": [],
+            "largest_repos": [],
+            "most_active_repos": [],
+            "orphaned_repos": [],
+            "lfs_repos": [],
+            "binary_heavy_repos": [],
+            "most_complex_repos": [],
+            "healthiest_repos": [],
+            "hottest_repos": [],
+            "lowest_health_repos": [],
+            "storage_breakdown": {},
+            "storage_breakdown_json": "{}",
+            "language_distribution_json": "{}",
+            "fetch_heatmap_json": "{}",
+            "analysis_timestamp": analysis_data.get("analysis_timestamp", ""),
+            "gitlab_version": analysis_data.get("gitlab_version", "Unknown"),
+            "collection_timestamp": analysis_data.get("collection_timestamp", ""),
+            "total_storage_gb": 0.0,
+        }
 
     def _get_html_template(self) -> Template:
         """Get the HTML template."""
@@ -632,4 +679,5 @@ class HTMLReportGenerator:
 </body>
 </html>
         """
-        return Template(template_content)
+        env = Environment(autoescape=True)
+        return env.from_string(template_content)
