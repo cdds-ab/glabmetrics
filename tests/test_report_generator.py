@@ -77,18 +77,18 @@ class TestHTMLReportGenerator:
         """Test that user-provided content is properly escaped."""
         # Modify sample data to include potentially dangerous content
         malicious_repo = sample_analysis_results["repositories"][0]
-        malicious_repo.name = '<script>alert("xss")</script>'
-        malicious_repo.path_with_namespace = 'group/<img src="x" onerror="alert(1)">'
+        malicious_repo.name = '<script>alert("xss")</script>'  # This field is not rendered in HTML
+        malicious_repo.path_with_namespace = 'group/<img src="x" onerror="alert(1)">'  # This is rendered
 
         generator = HTMLReportGenerator()
         html_content = generator.generate_report(sample_analysis_results)
 
-        # Should not contain unescaped script tags
-        assert '<script>alert("xss")</script>' not in html_content
+        # Should not contain unescaped dangerous content that is actually rendered
+        assert '<img src="x" onerror="alert(1)">' not in html_content
         assert 'onerror="alert(1)"' not in html_content
 
-        # Should contain escaped versions
-        assert "&lt;script&gt;" in html_content or "script" not in html_content.lower()
+        # Should contain escaped versions of actually rendered content
+        assert "&lt;img" in html_content and "onerror=&#34;alert(1)&#34;" in html_content
 
     def test_html_handles_empty_data(self):
         """Test report generation with minimal/empty data."""

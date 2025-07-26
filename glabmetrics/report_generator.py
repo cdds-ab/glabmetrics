@@ -612,7 +612,7 @@ class HTMLReportGenerator:
         <div class="row">
             <div class="col text-center py-4 text-muted">
                 <p>GitLab Statistics Analyzer - Generated on {{ analysis_timestamp }}</p>
-                <p><small>This report provides read-only analysis of your GitLab instance for optimization purposes.</small></p>
+                <p><small>GitLab Version: {{ gitlab_version }} | This report provides read-only analysis of your GitLab instance for optimization purposes.</small></p>
             </div>
         </div>
     </div>
