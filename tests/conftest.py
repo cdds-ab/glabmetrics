@@ -1,9 +1,7 @@
 """Pytest fixtures and configuration for GitLab Stats Analyzer tests."""
 
 import pytest
-import json
 from datetime import datetime, timedelta
-from collections import defaultdict
 from pathlib import Path
 from unittest.mock import Mock
 from typing import Dict, Any, List

@@ -231,7 +231,7 @@ class GitLabAnalyzer:
                         if age_days > 30:  # Artifacts older than 30 days
                             old_artifacts_size_mb += artifact_size_mb
                             expired_artifacts_count += 1
-                    except:
+                    except Exception:
                         pass
 
             # Calculate package sizes
@@ -498,7 +498,7 @@ class GitLabAnalyzer:
                     commit_date = parse_date(commit.get("created_at", ""))
                     if (datetime.now() - commit_date).days <= 30:
                         recent_commits += 1
-                except:
+                except Exception:
                     continue
             score += min(recent_commits * 2, 30)
 

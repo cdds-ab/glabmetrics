@@ -1,13 +1,13 @@
 # glabmetrics - Semantic Versioning Guide
 
-## 🚀 Wie das Semantic Versioning funktioniert
+## 🚀 How Semantic Versioning Works
 
-### **Commit-Message Formate:**
+### **Commit Message Formats:**
 
 #### **🔧 PATCH (1.0.0 → 1.0.1)**
 ```bash
-git commit -m "fix: behebe serialization error in test_data_storage"
-git commit -m "fix(api): korrigiere timeout handling in gitlab_client"
+git commit -m "fix: resolve serialization error in test_data_storage"
+git commit -m "fix(api): correct timeout handling in gitlab_client"
 ```
 
 #### **✨ MINOR (1.0.0 → 1.1.0)**  
@@ -25,44 +25,44 @@ BREAKING CHANGE: GitLab API v3 is no longer supported.
 Users must upgrade to GitLab v4 API."
 ```
 
-### **Release-Prozess:**
+### **Release Process:**
 
-#### **Automatisches Release (empfohlen):**
-1. **Entwicklung mit konventionellen Commits:**
+#### **Automatic Release (recommended):**
+1. **Development with conventional commits:**
    ```bash
    git add .
-   pdm run commit  # Verwendet commitizen für guided commit
-   git push origin main
+   pdm run commit  # Uses commitizen for guided commit
+   git push origin master
    ```
 
-2. **Semantic Release Workflow wird automatisch ausgelöst:**
-   - Analysiert Commit-Messages seit letztem Tag
-   - Bestimmt Version-Bump automatisch
-   - Aktualisiert Version in `pyproject.toml` und `__init__.py`
-   - Generiert `CHANGELOG.md`
-   - Erstellt Git-Tag und GitHub Release
-   - Triggert PyPI Upload
+2. **Semantic Release Workflow is automatically triggered:**
+   - Analyzes commit messages since last tag
+   - Determines version bump automatically
+   - Updates version in `pyproject.toml` and `__init__.py`
+   - Generates `CHANGELOG.md`
+   - Creates Git tag and GitHub Release
+   - Triggers Docker image build
 
-#### **Manuelles Release:**
+#### **Manual Release:**
 ```bash
 # Force specific version bump
 gh workflow run release.yml -f version_bump=minor
 ```
 
-### **Version-Beispiele:**
+### **Version Examples:**
 
-| Commits seit v1.0.0 | Neue Version | Trigger |
-|---------------------|--------------|---------|
+| Commits since v1.0.0 | New Version | Trigger |
+|----------------------|-------------|---------|
 | `fix: bug1`, `fix: bug2` | v1.0.1 | PATCH |
 | `feat: new feature` | v1.1.0 | MINOR |
 | `feat!: breaking change` | v2.0.0 | MAJOR |
 | `docs: update readme` | - | No release |
 
-### **Workflow-Dateien:**
+### **Workflow Files:**
 
 - **`.github/workflows/release.yml`** - Semantic Release
-- **`.github/workflows/ci.yml`** - CI/CD mit PyPI Upload bei Tags
-- **`.github/workflows/test-release.yml`** - TestPyPI für Experimente
+- **`.github/workflows/ci.yml`** - CI/CD with Docker publishing on tags
+- **`.github/workflows/test-release.yml`** - TestPyPI for experiments
 
 ### **Commands:**
 
@@ -84,14 +84,14 @@ pdm run changelog
 
 ### **Distribution:**
 
-1. **GitHub Releases**: Automatisch bei Git-Tags mit Artifacts
-2. **Docker Images**: Automatisch bei Releases zu GitHub Container Registry
-3. **Source Distribution**: Wheel/Tarball in GitHub Release Assets
-4. **PyPI**: Kann später aktiviert werden (derzeit deaktiviert)
+1. **GitHub Releases**: Automatic on Git tags with artifacts
+2. **Docker Images**: Automatic on releases to GitHub Container Registry
+3. **Source Distribution**: Wheel/Tarball in GitHub Release assets
+4. **PyPI**: Can be enabled later (currently disabled)
 
 ## 🎯 Next Steps:
 
-1. Repository nach GitHub pushen
-2. `PYPI_API_TOKEN` in Repository Settings hinzufügen  
-3. Ersten Release mit konventionellem Commit erstellen
-4. Semantic Release Workflow beobachten
+1. Push repository to GitHub
+2. Add `CODECOV_TOKEN` in repository settings  
+3. Create first release with conventional commit
+4. Monitor semantic release workflow

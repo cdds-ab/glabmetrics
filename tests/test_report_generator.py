@@ -37,8 +37,6 @@ class TestHTMLReportGenerator:
         generator = HTMLReportGenerator()
         html_content = generator.generate_report(sample_analysis_results)
 
-        soup = BeautifulSoup(html_content, "html.parser")
-
         # Should contain total repositories count
         assert "3" in html_content  # total_repositories from sample data
 

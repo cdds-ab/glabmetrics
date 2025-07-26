@@ -1,6 +1,7 @@
 """Tests for GitLab API client."""
 
 import responses
+import unittest.mock
 from requests.exceptions import Timeout
 
 from glabmetrics.gitlab_client import GitLabClient
@@ -482,5 +483,3 @@ class TestPerformanceTracking:
         assert client.performance_tracker is None
 
 
-# Import required for mocking
-import unittest.mock

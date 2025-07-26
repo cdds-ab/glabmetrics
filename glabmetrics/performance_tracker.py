@@ -1,9 +1,9 @@
 """Performance tracking for GitLab data collection."""
 
 import time
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Optional
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from collections import defaultdict
 
 

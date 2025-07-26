@@ -13,30 +13,30 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?logo=github)](http://makeapullrequest.com)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/cdds-ab/glabmetrics/graphs/commit-activity)
 
-Ein leistungsstarkes CLI-Tool zur umfassenden Analyse von GitLab-Instanzen mit detaillierter HTML-Berichterstattung und Optimierungsempfehlungen für DevOps-Consultants.
+A powerful CLI tool for comprehensive analysis of GitLab instances with detailed HTML reporting and optimization recommendations for DevOps consultants.
 
 ## ✨ Features
 
-### 📊 Umfassende Analyse
-- **Repository-Metriken**: Größe, Commits, Contributors, Aktivität
-- **Storage-Breakdown**: LFS, Artifacts, Packages, Container Registry
-- **Advanced Scoring**: Complexity, Health, Hotness, Maintenance Scores
-- **Pipeline-Analyse**: Success Rates, Performance, Runner-Usage
-- **Optimization Recommendations**: Konkrete Cleanup-Empfehlungen
+### 📊 Comprehensive Analysis
+- **Repository Metrics**: Size, commits, contributors, activity
+- **Storage Breakdown**: LFS, artifacts, packages, container registry
+- **Advanced Scoring**: Complexity, health, hotness, maintenance scores
+- **Pipeline Analysis**: Success rates, performance, runner usage
+- **Optimization Recommendations**: Concrete cleanup suggestions
 
 ### 🚀 Performance & Caching
-- **Intelligentes Caching**: JSON-basierte Zwischenspeicherung für schnelle Re-Analysen
-- **Performance-Tracking**: Detaillierte API-Performance-Statistiken
-- **Incremental Updates**: Nur neue Daten abrufen mit `--refresh-data`
+- **Intelligent Caching**: JSON-based intermediate storage for fast re-analysis
+- **Performance Tracking**: Detailed API performance statistics
+- **Incremental Updates**: Fetch only new data with `--refresh-data`
 
-### 📱 Moderne Berichterstattung
-- **Bootstrap 5 HTML**: Responsive, professionelle Reports
-- **Chart.js Visualisierungen**: Interactive Charts und Diagramme
-- **GitLab Version Detection**: Optimiert für GitLab 17.x+ Features
-- **Export-Ready**: PDF-Print-optimierte Layouts
+### 📱 Modern Reporting
+- **Bootstrap 5 HTML**: Responsive, professional reports
+- **Chart.js Visualizations**: Interactive charts and diagrams
+- **GitLab Version Detection**: Optimized for GitLab 17.x+ features
+- **Export-Ready**: PDF-print optimized layouts
 
-### 🐳 Deployment-Optionen
-- **Standalone CLI**: Direkte Installation und Ausführung
+### 🐳 Deployment Options
+- **Standalone CLI**: Direct installation and execution
 - **Docker Support**: Containerized deployment
 - **CI/CD Integration**: GitHub Actions ready
 
@@ -45,7 +45,7 @@ Ein leistungsstarkes CLI-Tool zur umfassenden Analyse von GitLab-Instanzen mit d
 ### 🐳 Installation
 
 ```bash
-# Production Ready (empfohlen)
+# Production Ready (recommended)
 docker pull ghcr.io/cdds-ab/glabmetrics:latest
 
 # Development Setup
@@ -57,12 +57,12 @@ pdm install
 ### 🚀 Usage
 
 ```bash
-# 🐳 Docker (Production - empfohlen)
+# 🐳 Docker (Production - recommended)
 docker run --rm -v $(pwd):/reports ghcr.io/cdds-ab/glabmetrics:latest \
   https://gitlab.example.com your-admin-token \
   --output /reports/gitlab-analysis.html
 
-# Mit Datenpersistenz und erweiterten Optionen
+# With data persistence and advanced options
 docker run --rm \
   -v $(pwd)/data:/data \
   -v $(pwd)/reports:/reports \
@@ -72,7 +72,7 @@ docker run --rm \
   --output /reports/detailed-report.html \
   --verbose --refresh-data
 
-# 🛠️ Development (nur für Entwickler)
+# 🛠️ Development (for developers only)
 pdm run glabmetrics https://gitlab.example.com your-admin-token \
   --output report.html --refresh-data
 ```
@@ -99,33 +99,33 @@ Options:
 
 ### GitLab Token Setup
 
-1. **Admin Token erstellen**:
+1. **Create Admin Token**:
    - GitLab → User Settings → Access Tokens
    - Scopes: `api`, `read_api`, `read_repository`
-   - Role: `Administrator` (für System-Statistiken)
+   - Role: `Administrator` (for system statistics)
 
-2. **Permissions prüfen**:
+2. **Check Permissions**:
    ```bash
    curl -H "Private-Token: your-token" https://gitlab.example.com/api/v4/user
    ```
 
 ### Workflow Examples
 
-#### Erste vollständige Analyse
+#### First Complete Analysis
 ```bash
-# Vollständige Datensammlung (kann Stunden dauern)
+# Complete data collection (may take hours)
 pdm run glabmetrics https://gitlab.example.com token --verbose --refresh-data
 
-# Schnelle Analyse ohne Binary-Scan
+# Quick analysis without binary scan
 pdm run glabmetrics https://gitlab.example.com token --skip-binary-scan --refresh-data
 ```
 
-#### Regelmäßige Updates
+#### Regular Updates
 ```bash
-# Verwende gecachte Daten für schnelle Reports
+# Use cached data for quick reports
 pdm run glabmetrics https://gitlab.example.com token --output weekly-report.html
 
-# Cache aktualisieren (wöchentlich empfohlen)
+# Update cache (recommended weekly)
 pdm run glabmetrics https://gitlab.example.com token --refresh-data
 ```
 

@@ -400,9 +400,9 @@ class GitLabClient:
                             if result:
                                 ref = branch_name
                                 break
-                        except:
+                        except Exception:
                             continue
-            except:
+            except Exception:
                 ref = "main"  # Final fallback
 
         if ref:

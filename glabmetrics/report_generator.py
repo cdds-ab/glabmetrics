@@ -1,6 +1,6 @@
 """HTML report generator for GitLab statistics."""
 
-from typing import Dict, Any, List
+from typing import Dict, Any
 from datetime import datetime
 from jinja2 import Template
 import json
@@ -600,7 +600,6 @@ class HTMLReportGenerator:
         // Storage breakdown pie chart
         const storageData = {{ storage_breakdown_json | safe }};
         const ctx = document.getElementById('storageChart').getContext('2d');
-        
         new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -609,7 +608,7 @@ class HTMLReportGenerator:
                     data: Object.values(storageData),
                     backgroundColor: [
                         '#0d6efd',
-                        '#6f42c1', 
+                        '#6f42c1',
                         '#fd7e14',
                         '#20c997',
                         '#dc3545'
