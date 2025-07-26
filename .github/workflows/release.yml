@@ -1,0 +1,111 @@
+name: Semantic Release
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+      - 'CHANGELOG.md'
+      - 'gitlab_stats/__init__.py'
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Force version bump type (overrides conventional commits)'
+        required: false
+        type: choice
+        options:
+        - ""
+        - patch  
+        - minor
+        - major
+        - prerelease
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    # Skip if commit is from commitizen bump
+    if: "!contains(github.event.head_commit.message, 'bump:') && !contains(github.event.head_commit.author.name, 'github-actions')"
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      skipped: ${{ steps.version.outputs.skipped }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install PDM
+      run: |
+        curl -sSL https://pdm-project.org/install-pdm.py | python3 -
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Install dependencies
+      run: |
+        pdm install -d
+
+    - name: Configure Git
+      run: |
+        git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+
+    - name: Check if release is needed
+      id: check
+      run: |
+        # Check if there are any commits that would trigger a release
+        if git log $(git describe --tags --abbrev=0)..HEAD --oneline --grep="^feat" --grep="^fix" --grep="^perf" --grep="BREAKING CHANGE" | wc -l | grep -q "^0$"; then
+          echo "skip=true" >> $GITHUB_OUTPUT
+          echo "No releasable commits found since last tag"
+        else
+          echo "skip=false" >> $GITHUB_OUTPUT
+          echo "Found releasable commits"
+        fi
+
+    - name: Bump version and create changelog
+      id: version
+      if: steps.check.outputs.skip == 'false'
+      run: |
+        # Determine bump type
+        if [[ -n "${{ github.event.inputs.version_bump }}" ]]; then
+          BUMP_ARG="--increment ${{ github.event.inputs.version_bump }}"
+        else
+          # Let commitizen determine automatically
+          BUMP_ARG=""
+        fi
+        
+        # Try to bump version
+        if pdm run cz bump $BUMP_ARG --yes --check-consistency; then
+          new_version=$(pdm run cz version --project)
+          echo "version=$new_version" >> $GITHUB_OUTPUT
+          echo "skipped=false" >> $GITHUB_OUTPUT
+          echo "Released version: $new_version"
+        else
+          echo "skipped=true" >> $GITHUB_OUTPUT
+          echo "No version bump needed"
+        fi
+
+    - name: Push changes
+      if: steps.version.outputs.skipped == 'false'
+      run: |
+        git push --follow-tags origin master
+
+    - name: Create GitHub Release
+      if: steps.version.outputs.skipped == 'false'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.version.outputs.version }}
+        release_name: Release v${{ steps.version.outputs.version }}
+        body_path: CHANGELOG.md
+        draft: false
+        prerelease: false
