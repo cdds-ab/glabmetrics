@@ -481,5 +481,3 @@ class TestPerformanceTracking:
 
         # Should not raise errors when performance_tracker is None
         assert client.performance_tracker is None
-
-
