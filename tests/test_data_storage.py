@@ -270,9 +270,7 @@ class TestGitLabDataStorage:
         assert loaded_repo.fetch_activity == {}
         assert loaded_repo.gitlab_version == ""
 
-    def test_multiple_repositories_serialization(
-        self, temp_data_file, multiple_repository_stats
-    ):
+    def test_multiple_repositories_serialization(self, temp_data_file, multiple_repository_stats):
         """Test serialization of multiple repositories with different characteristics."""
         storage = GitLabDataStorage(str(temp_data_file))
         timestamp = datetime.now()

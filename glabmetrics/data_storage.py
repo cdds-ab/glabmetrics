@@ -63,22 +63,10 @@ class GitLabDataStorage:
             "size_mb": repo.size_mb,
             "commit_count": repo.commit_count,
             "contributor_count": repo.contributor_count,
-            "last_activity": (
-                repo.last_activity.isoformat()
-                if repo.last_activity > datetime.min
-                else None
-            ),
+            "last_activity": (repo.last_activity.isoformat() if repo.last_activity > datetime.min else None),
             "is_orphaned": repo.is_orphaned,
-            "languages": (
-                dict(repo.languages)
-                if hasattr(repo.languages, "items")
-                else repo.languages
-            ),
-            "storage_stats": (
-                dict(repo.storage_stats)
-                if hasattr(repo.storage_stats, "items")
-                else repo.storage_stats
-            ),
+            "languages": (dict(repo.languages) if hasattr(repo.languages, "items") else repo.languages),
+            "storage_stats": (dict(repo.storage_stats) if hasattr(repo.storage_stats, "items") else repo.storage_stats),
             "pipeline_count": repo.pipeline_count,
             "open_mrs": repo.open_mrs,
             "open_issues": repo.open_issues,
@@ -133,9 +121,7 @@ class GitLabDataStorage:
         """Load repository data from JSON file."""
         try:
             if not self.data_file.exists():
-                raise FileNotFoundError(
-                    f"Data file {self.data_file} not found. Run with --refresh-data first."
-                )
+                raise FileNotFoundError(f"Data file {self.data_file} not found. Run with --refresh-data first.")
 
             with open(self.data_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -146,9 +132,7 @@ class GitLabDataStorage:
                 try:
                     # Convert ISO string back to datetime
                     if repo_dict.get("last_activity"):
-                        repo_dict["last_activity"] = datetime.fromisoformat(
-                            repo_dict["last_activity"]
-                        )
+                        repo_dict["last_activity"] = datetime.fromisoformat(repo_dict["last_activity"])
                     else:
                         repo_dict["last_activity"] = datetime.min
 
@@ -174,16 +158,12 @@ class GitLabDataStorage:
                     repositories.append(repo)
 
                 except Exception as e:
-                    logger.warning(
-                        f"Error deserializing repository {repo_dict.get('name', 'unknown')}: {e}"
-                    )
+                    logger.warning(f"Error deserializing repository {repo_dict.get('name', 'unknown')}: {e}")
                     continue
 
             analysis_timestamp = datetime.fromisoformat(data["analysis_timestamp"])
 
-            logger.info(
-                f"Data loaded from {self.data_file} (timestamp: {analysis_timestamp})"
-            )
+            logger.info(f"Data loaded from {self.data_file} (timestamp: {analysis_timestamp})")
             return repositories, analysis_timestamp
 
         except Exception as e:
@@ -234,11 +214,7 @@ def serialize_analysis_results(analysis_results: Dict[str, Any]) -> Dict[str, An
             system_dict["repositories_by_size"] = [
                 {
                     **asdict(repo),
-                    "last_activity": (
-                        repo.last_activity.isoformat()
-                        if repo.last_activity > datetime.min
-                        else None
-                    ),
+                    "last_activity": (repo.last_activity.isoformat() if repo.last_activity > datetime.min else None),
                 }
                 for repo in system_stats.repositories_by_size
             ]
@@ -247,11 +223,7 @@ def serialize_analysis_results(analysis_results: Dict[str, Any]) -> Dict[str, An
             system_dict["most_active_repositories"] = [
                 {
                     **asdict(repo),
-                    "last_activity": (
-                        repo.last_activity.isoformat()
-                        if repo.last_activity > datetime.min
-                        else None
-                    ),
+                    "last_activity": (repo.last_activity.isoformat() if repo.last_activity > datetime.min else None),
                 }
                 for repo in system_stats.most_active_repositories
             ]

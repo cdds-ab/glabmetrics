@@ -28,9 +28,7 @@ class TestGitLabAnalyzer:
 class TestRepositoryAnalysis:
     """Test repository analysis methods."""
 
-    def test_analyze_project_basic_stats(
-        self, mock_gitlab_client, sample_repository_data
-    ):
+    def test_analyze_project_basic_stats(self, mock_gitlab_client, sample_repository_data):
         """Test basic project analysis statistics."""
         # Setup mock responses
         mock_gitlab_client.get_projects.return_value = [sample_repository_data]
@@ -43,9 +41,7 @@ class TestRepositoryAnalysis:
             {"name": "Dev 2"},
             {"name": "Dev 3"},
         ]
-        mock_gitlab_client.get_project_merge_requests.return_value = [
-            {"id": 1, "state": "opened"}
-        ]
+        mock_gitlab_client.get_project_merge_requests.return_value = [{"id": 1, "state": "opened"}]
         mock_gitlab_client.get_project_issues.return_value = [
             {"id": 1, "state": "opened"},
             {"id": 2, "state": "opened"},
@@ -58,9 +54,7 @@ class TestRepositoryAnalysis:
             "Python": 70.0,
             "JavaScript": 30.0,
         }
-        mock_gitlab_client.get_project_with_statistics.return_value = (
-            sample_repository_data
-        )
+        mock_gitlab_client.get_project_with_statistics.return_value = sample_repository_data
         mock_gitlab_client.get_project_packages.return_value = []
         mock_gitlab_client.get_project_container_registry.return_value = []
         mock_gitlab_client.get_project_job_artifacts_list.return_value = []
@@ -129,9 +123,7 @@ class TestScoringAlgorithms:
         commits = [{"id": f"commit_{i}"} for i in range(50)]  # 50 commits
         contributors = [{"name": f"dev_{i}"} for i in range(10)]  # 10 contributors
 
-        score = analyzer._calculate_complexity_score(
-            project, languages, commits, contributors
-        )
+        score = analyzer._calculate_complexity_score(project, languages, commits, contributors)
 
         # Should be high due to language diversity, size/commit ratio, and contributors
         assert 60 <= score <= 100
@@ -147,9 +139,7 @@ class TestScoringAlgorithms:
         commits = [{"id": f"commit_{i}"} for i in range(100)]  # Many small commits
         contributors = [{"name": "single_dev"}]  # Single contributor
 
-        score = analyzer._calculate_complexity_score(
-            project, languages, commits, contributors
-        )
+        score = analyzer._calculate_complexity_score(project, languages, commits, contributors)
 
         # Should be low due to single language, small size, single contributor
         assert 0 <= score <= 40
@@ -164,9 +154,7 @@ class TestScoringAlgorithms:
         issues = []  # No open issues
         recent_activity = datetime.now() - timedelta(days=1)  # Recent activity
 
-        score = analyzer._calculate_health_score(
-            project, merge_requests, issues, recent_activity
-        )
+        score = analyzer._calculate_health_score(project, merge_requests, issues, recent_activity)
 
         # Should be high due to recent activity and no open issues/MRs
         assert 80 <= score <= 100
@@ -181,9 +169,7 @@ class TestScoringAlgorithms:
         issues = [{"id": i} for i in range(25)]  # Many open issues
         old_activity = datetime.now() - timedelta(days=200)  # Old activity
 
-        score = analyzer._calculate_health_score(
-            project, merge_requests, issues, old_activity
-        )
+        score = analyzer._calculate_health_score(project, merge_requests, issues, old_activity)
 
         # Should be low due to old activity and many open issues/MRs
         assert 0 <= score <= 30
@@ -222,9 +208,7 @@ class TestScoringAlgorithms:
 
         recent_activity = datetime.now() - timedelta(hours=2)  # Very recent
 
-        score = analyzer._calculate_hotness_score(
-            fetch_activity, recent_commits, recent_activity
-        )
+        score = analyzer._calculate_hotness_score(fetch_activity, recent_commits, recent_activity)
 
         # Should be high due to recent fetches, commits, and activity
         assert 60 <= score <= 100
@@ -239,9 +223,7 @@ class TestScoringAlgorithms:
         merge_requests = []  # No open MRs
         issues = []  # No open issues
 
-        score = analyzer._calculate_maintenance_score(
-            project, last_activity, merge_requests, issues
-        )
+        score = analyzer._calculate_maintenance_score(project, last_activity, merge_requests, issues)
 
         # Should be high due to recent activity, no open issues/MRs, and description
         assert 70 <= score <= 100

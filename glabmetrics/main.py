@@ -84,9 +84,7 @@ def cli(
             # Fresh data collection from GitLab API
             console.print("[cyan]Collecting fresh data from GitLab API...[/cyan]")
             if skip_binary_scan:
-                console.print(
-                    "[yellow]Skipping binary file detection for faster collection...[/yellow]"
-                )
+                console.print("[yellow]Skipping binary file detection for faster collection...[/yellow]")
 
             # Initialize performance tracker
             performance_tracker = PerformanceTracker()
@@ -97,16 +95,12 @@ def cli(
 
             # Test connection
             if not client.test_connection():
-                console.print(
-                    "[red]Error: Could not connect to GitLab instance or invalid token[/red]"
-                )
+                console.print("[red]Error: Could not connect to GitLab instance or invalid token[/red]")
                 sys.exit(1)
 
             if verbose:
                 console.print("[green]✓ Connection established[/green]")
-                console.print(
-                    f"[blue]GitLab Version: {client.get_gitlab_version()}[/blue]"
-                )
+                console.print(f"[blue]GitLab Version: {client.get_gitlab_version()}[/blue]")
 
             # Initialize analyzer
             analyzer = GitLabAnalyzer(client)
@@ -117,15 +111,11 @@ def cli(
                 task = progress.add_task("[cyan]Collecting GitLab data...", total=100)
 
                 # Collect data
-                progress.update(
-                    task, advance=50, description="[cyan]Fetching projects..."
-                )
+                progress.update(task, advance=50, description="[cyan]Fetching projects...")
                 performance_tracker.set_repository_count(len(client.get_projects()))
                 analyzer.collect_project_data()
 
-                progress.update(
-                    task, advance=30, description="[cyan]Saving data to cache..."
-                )
+                progress.update(task, advance=30, description="[cyan]Saving data to cache...")
 
                 # Save data to cache with performance stats
                 analysis_timestamp = datetime.now()
@@ -138,9 +128,7 @@ def cli(
 
             # Show performance summary
             console.print(f"[green]✓ Data collected and cached in {data_file}[/green]")
-            console.print(
-                f"[blue]Collection completed in {perf_stats.total_duration:.1f} seconds[/blue]"
-            )
+            console.print(f"[blue]Collection completed in {perf_stats.total_duration:.1f} seconds[/blue]")
             console.print(
                 f"[blue]Total API calls: {perf_stats.total_api_calls} ({perf_stats.total_failed_calls} failed)[/blue]"
             )
@@ -153,22 +141,16 @@ def cli(
         with Progress() as progress:
             task = progress.add_task("[cyan]Processing analysis...", total=100)
 
-            progress.update(
-                task, advance=25, description="[cyan]Analyzing repositories..."
-            )
+            progress.update(task, advance=25, description="[cyan]Analyzing repositories...")
             analyzer.analyze_repositories()
 
-            progress.update(
-                task, advance=25, description="[cyan]Checking storage usage..."
-            )
+            progress.update(task, advance=25, description="[cyan]Checking storage usage...")
             analyzer.analyze_storage()
 
             progress.update(task, advance=25, description="[cyan]Analyzing activity...")
             analyzer.analyze_activity()
 
-            progress.update(
-                task, advance=15, description="[cyan]Analyzing pipelines..."
-            )
+            progress.update(task, advance=15, description="[cyan]Analyzing pipelines...")
             analyzer.analyze_pipelines()
 
             progress.update(task, advance=10, description="[cyan]Generating report...")
@@ -182,14 +164,10 @@ def cli(
         output_path = Path(output)
         output_path.write_text(html_content, encoding="utf-8")
 
-        console.print(
-            f"[green]✓ Report generated successfully: {output_path.absolute()}[/green]"
-        )
+        console.print(f"[green]✓ Report generated successfully: {output_path.absolute()}[/green]")
 
         if not refresh_data and storage.data_exists():
-            console.print(
-                f"[yellow]Data is {storage.get_data_age()}. Use --refresh-data for latest data.[/yellow]"
-            )
+            console.print(f"[yellow]Data is {storage.get_data_age()}. Use --refresh-data for latest data.[/yellow]")
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")

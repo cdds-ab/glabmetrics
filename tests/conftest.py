@@ -80,9 +80,7 @@ def sample_repository_stats() -> RepositoryStats:
                 "artifact_filename": "build-artifacts.zip",
             }
         ],
-        lfs_objects_details=[
-            {"path": "assets/large-image.png", "size": 26214400, "type": "large_file"}
-        ],
+        lfs_objects_details=[{"path": "assets/large-image.png", "size": 26214400, "type": "large_file"}],
         expired_artifacts_count=2,
         old_artifacts_size_mb=8.5,
         gitlab_version="17.2.1-ee",
@@ -161,26 +159,16 @@ def sample_system_stats(multiple_repository_stats) -> SystemStats:
         total_artifacts_size_gb=0.063,  # 65 MB / 1024
         total_packages_size_gb=0.0,
         total_container_registry_size_gb=0.0,
-        repositories_by_size=sorted(
-            multiple_repository_stats, key=lambda r: r.size_mb, reverse=True
-        ),
+        repositories_by_size=sorted(multiple_repository_stats, key=lambda r: r.size_mb, reverse=True),
         activity_by_month={"2025-07": 225, "2025-01": 20},
-        most_active_repositories=sorted(
-            multiple_repository_stats, key=lambda r: r.commit_count, reverse=True
-        ),
+        most_active_repositories=sorted(multiple_repository_stats, key=lambda r: r.commit_count, reverse=True),
         optimization_recommendations=[
             "Found 1 repositories with no activity in the last 6 months.",
             "Found 1 repositories with more than 400MB of LFS data.",
         ],
-        most_complex_repositories=sorted(
-            multiple_repository_stats, key=lambda r: r.complexity_score, reverse=True
-        ),
-        healthiest_repositories=sorted(
-            multiple_repository_stats, key=lambda r: r.health_score, reverse=True
-        ),
-        hottest_repositories=sorted(
-            multiple_repository_stats, key=lambda r: r.hotness_score, reverse=True
-        ),
+        most_complex_repositories=sorted(multiple_repository_stats, key=lambda r: r.complexity_score, reverse=True),
+        healthiest_repositories=sorted(multiple_repository_stats, key=lambda r: r.health_score, reverse=True),
+        hottest_repositories=sorted(multiple_repository_stats, key=lambda r: r.hotness_score, reverse=True),
         language_distribution={"Python": 2, "JavaScript": 1, "PHP": 1, "R": 1},
         avg_complexity_score=56.83,
         avg_health_score=56.73,
@@ -204,9 +192,7 @@ def mock_gitlab_client(mocker) -> Mock:
 def mock_performance_tracker() -> Mock:
     """Mock performance tracker for testing."""
     tracker = Mock(spec=PerformanceTracker)
-    tracker.get_performance_stats.return_value = Mock(
-        total_duration=120.5, total_api_calls=150, total_failed_calls=2
-    )
+    tracker.get_performance_stats.return_value = Mock(total_duration=120.5, total_api_calls=150, total_failed_calls=2)
     return tracker
 
 
@@ -290,9 +276,7 @@ def temp_report_file(tmp_path) -> Path:
 
 
 @pytest.fixture
-def sample_analysis_results(
-    sample_system_stats, multiple_repository_stats
-) -> Dict[str, Any]:
+def sample_analysis_results(sample_system_stats, multiple_repository_stats) -> Dict[str, Any]:
     """Sample complete analysis results for testing."""
     return {
         "system_stats": sample_system_stats,
@@ -326,7 +310,5 @@ def create_mock_api_response(data: Any, status_code: int = 200) -> Mock:
     response = Mock()
     response.status_code = status_code
     response.json.return_value = data
-    response.raise_for_status.side_effect = (
-        None if status_code < 400 else Exception(f"HTTP {status_code}")
-    )
+    response.raise_for_status.side_effect = None if status_code < 400 else Exception(f"HTTP {status_code}")
     return response

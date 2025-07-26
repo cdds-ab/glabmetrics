@@ -53,9 +53,7 @@ class TestHTMLReportGenerator:
 
         # Should include Bootstrap CSS
         assert "bootstrap" in html_content.lower()
-        assert (
-            "cdn.jsdelivr.net" in html_content or "cdnjs.cloudflare.com" in html_content
-        )
+        assert "cdn.jsdelivr.net" in html_content or "cdnjs.cloudflare.com" in html_content
 
         # Should include Chart.js
         assert "chart.js" in html_content.lower()
@@ -160,9 +158,7 @@ class TestHTMLReportGenerator:
 
         # Should contain collection timestamp
         collection_time = sample_analysis_results["collection_timestamp"]
-        assert (
-            collection_time in html_content or "2025" in html_content
-        )  # Should have some timestamp
+        assert collection_time in html_content or "2025" in html_content  # Should have some timestamp
 
     def test_gitlab_version_display(self, sample_analysis_results):
         """Test that GitLab version is displayed."""

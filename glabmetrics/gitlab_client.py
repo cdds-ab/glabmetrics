@@ -25,9 +25,7 @@ class GitLabClient:
         self.performance_tracker = performance_tracker
         self.gitlab_version = None
         self.session = requests.Session()
-        self.session.headers.update(
-            {"Private-Token": token, "Content-Type": "application/json"}
-        )
+        self.session.headers.update({"Private-Token": token, "Content-Type": "application/json"})
 
     def test_connection(self) -> bool:
         """Test if connection to GitLab is working and detect version."""
@@ -65,9 +63,7 @@ class GitLabClient:
         try:
             # Method 3: Check for version-specific API endpoints
             # GitLab 17.x has different storage APIs
-            response = self.session.get(
-                urljoin(self.api_url, "admin/usage_trends/measurements")
-            )
+            response = self.session.get(urljoin(self.api_url, "admin/usage_trends/measurements"))
             if response.status_code in [
                 200,
                 403,
@@ -123,19 +119,13 @@ class GitLabClient:
             except requests.exceptions.RequestException as e:
                 # Track failed API call
                 if self.performance_tracker:
-                    self.performance_tracker.add_api_call(
-                        "API Requests", success=False, error_message=str(e)
-                    )
-                console.print(
-                    f"[yellow]Warning: Error fetching {endpoint}: {e}[/yellow]"
-                )
+                    self.performance_tracker.add_api_call("API Requests", success=False, error_message=str(e))
+                console.print(f"[yellow]Warning: Error fetching {endpoint}: {e}[/yellow]")
                 break
 
         return all_data
 
-    def _make_single_request(
-        self, endpoint: str, params: Optional[Dict] = None
-    ) -> Optional[Dict]:
+    def _make_single_request(self, endpoint: str, params: Optional[Dict] = None) -> Optional[Dict]:
         """Make single API request."""
         url = urljoin(self.api_url, endpoint)
         try:
@@ -166,13 +156,9 @@ class GitLabClient:
 
     def get_project_details(self, project_id: int) -> Optional[Dict]:
         """Get detailed project information."""
-        return self._make_single_request(
-            f"projects/{project_id}", {"statistics": "true"}
-        )
+        return self._make_single_request(f"projects/{project_id}", {"statistics": "true"})
 
-    def get_project_commits(
-        self, project_id: int, since: Optional[str] = None
-    ) -> List[Dict]:
+    def get_project_commits(self, project_id: int, since: Optional[str] = None) -> List[Dict]:
         """Get commits for a project."""
         if self.performance_tracker:
             self.performance_tracker.start_api_block("Commit History")
@@ -193,9 +179,7 @@ class GitLabClient:
 
     def get_project_merge_requests(self, project_id: int) -> List[Dict]:
         """Get merge requests for a project."""
-        return self._make_request(
-            f"projects/{project_id}/merge_requests", {"state": "opened"}
-        )
+        return self._make_request(f"projects/{project_id}/merge_requests", {"state": "opened"})
 
     def get_project_pipelines(self, project_id: int) -> List[Dict]:
         """Get pipelines for a project."""
@@ -211,9 +195,7 @@ class GitLabClient:
 
     def get_pipeline_details(self, project_id: int, pipeline_id: int) -> Optional[Dict]:
         """Get detailed pipeline information including jobs."""
-        return self._make_single_request(
-            f"projects/{project_id}/pipelines/{pipeline_id}"
-        )
+        return self._make_single_request(f"projects/{project_id}/pipelines/{pipeline_id}")
 
     def get_pipeline_jobs(self, project_id: int, pipeline_id: int) -> List[Dict]:
         """Get jobs for a specific pipeline."""
@@ -232,14 +214,10 @@ class GitLabClient:
         if self.performance_tracker:
             self.performance_tracker.start_api_block("Detailed Storage Statistics")
 
-        result = self._make_single_request(
-            f"projects/{project_id}", {"statistics": "true"}
-        )
+        result = self._make_single_request(f"projects/{project_id}", {"statistics": "true"})
 
         if self.performance_tracker:
-            self.performance_tracker.end_api_block(
-                "Detailed Storage Statistics", 1 if result else 0
-            )
+            self.performance_tracker.end_api_block("Detailed Storage Statistics", 1 if result else 0)
 
         return result
 
@@ -252,16 +230,12 @@ class GitLabClient:
         jobs_with_artifacts = []
         try:
             # Get recent pipelines
-            pipelines = self._make_request(
-                f"projects/{project_id}/pipelines", {"per_page": 20}
-            )
+            pipelines = self._make_request(f"projects/{project_id}/pipelines", {"per_page": 20})
 
             for pipeline in pipelines[:10]:  # Analyze last 10 pipelines
                 pipeline_id = pipeline.get("id")
                 if pipeline_id:
-                    jobs = self._make_request(
-                        f"projects/{project_id}/pipelines/{pipeline_id}/jobs"
-                    )
+                    jobs = self._make_request(f"projects/{project_id}/pipelines/{pipeline_id}/jobs")
                     for job in jobs:
                         if job.get("artifacts") and job["artifacts"].get("file"):
                             artifact_info = {
@@ -270,25 +244,17 @@ class GitLabClient:
                                 "pipeline_id": pipeline_id,
                                 "created_at": job.get("created_at"),
                                 "artifacts_expire_at": job.get("artifacts_expire_at"),
-                                "artifact_size": job["artifacts"]["file"].get(
-                                    "size", 0
-                                ),
-                                "artifact_filename": job["artifacts"]["file"].get(
-                                    "filename", ""
-                                ),
+                                "artifact_size": job["artifacts"]["file"].get("size", 0),
+                                "artifact_filename": job["artifacts"]["file"].get("filename", ""),
                                 "status": job.get("status"),
                             }
                             jobs_with_artifacts.append(artifact_info)
         except Exception as e:
             if self.performance_tracker:
-                self.performance_tracker.add_api_call(
-                    "Job Artifacts Analysis", False, str(e)
-                )
+                self.performance_tracker.add_api_call("Job Artifacts Analysis", False, str(e))
 
         if self.performance_tracker:
-            self.performance_tracker.end_api_block(
-                "Job Artifacts Analysis", len(jobs_with_artifacts)
-            )
+            self.performance_tracker.end_api_block("Job Artifacts Analysis", len(jobs_with_artifacts))
 
         return jobs_with_artifacts
 
@@ -303,31 +269,20 @@ class GitLabClient:
             # Note: This is an approximation as direct LFS API might need admin access
             tree = self.get_project_repository_tree(project_id)
             for item in tree:
-                if (
-                    item.get("name", "").endswith(".lfs")
-                    or item.get("size", 0) > 100 * 1024 * 1024
-                ):  # >100MB
+                if item.get("name", "").endswith(".lfs") or item.get("size", 0) > 100 * 1024 * 1024:  # >100MB
                     lfs_objects.append(
                         {
                             "path": item.get("path"),
                             "size": item.get("size", 0),
-                            "type": (
-                                "lfs_pointer"
-                                if item.get("name", "").endswith(".lfs")
-                                else "large_file"
-                            ),
+                            "type": ("lfs_pointer" if item.get("name", "").endswith(".lfs") else "large_file"),
                         }
                     )
         except Exception as e:
             if self.performance_tracker:
-                self.performance_tracker.add_api_call(
-                    "LFS Objects Analysis", False, str(e)
-                )
+                self.performance_tracker.add_api_call("LFS Objects Analysis", False, str(e))
 
         if self.performance_tracker:
-            self.performance_tracker.end_api_block(
-                "LFS Objects Analysis", len(lfs_objects)
-            )
+            self.performance_tracker.end_api_block("LFS Objects Analysis", len(lfs_objects))
 
         return lfs_objects
 
@@ -357,9 +312,7 @@ class GitLabClient:
 
     def get_registry_tags(self, project_id: int, repository_id: int) -> List[Dict]:
         """Get tags for a container registry repository."""
-        return self._make_request(
-            f"projects/{project_id}/registry/repositories/{repository_id}/tags"
-        )
+        return self._make_request(f"projects/{project_id}/registry/repositories/{repository_id}/tags")
 
     def get_users(self) -> List[Dict]:
         """Get all users."""
@@ -373,9 +326,7 @@ class GitLabClient:
         """Get system-wide statistics (admin only)."""
         return self._make_single_request("application/statistics")
 
-    def get_project_repository_tree(
-        self, project_id: int, path: str = "", ref: Optional[str] = None
-    ) -> List[Dict]:
+    def get_project_repository_tree(self, project_id: int, path: str = "", ref: Optional[str] = None) -> List[Dict]:
         """Get repository file tree."""
         if self.performance_tracker:
             self.performance_tracker.start_api_block("Binary File Detection")
@@ -394,9 +345,7 @@ class GitLabClient:
                         try:
                             test_params = params.copy()
                             test_params["ref"] = branch_name
-                            result = self._make_request(
-                                f"projects/{project_id}/repository/tree", test_params
-                            )
+                            result = self._make_request(f"projects/{project_id}/repository/tree", test_params)
                             if result:
                                 ref = branch_name
                                 break

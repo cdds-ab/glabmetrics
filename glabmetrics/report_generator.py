@@ -38,9 +38,7 @@ class HTMLReportGenerator:
             "total_lfs_size_gb": round(system_stats.total_lfs_size_gb, 2),
             "total_artifacts_size_gb": round(system_stats.total_artifacts_size_gb, 2),
             "total_packages_size_gb": round(system_stats.total_packages_size_gb, 2),
-            "total_container_registry_size_gb": round(
-                system_stats.total_container_registry_size_gb, 2
-            ),
+            "total_container_registry_size_gb": round(system_stats.total_container_registry_size_gb, 2),
             "optimization_recommendations": system_stats.optimization_recommendations,
             "avg_complexity_score": round(system_stats.avg_complexity_score, 1),
             "avg_health_score": round(system_stats.avg_health_score, 1),
@@ -60,9 +58,7 @@ class HTMLReportGenerator:
                 "commit_count": repo.commit_count,
                 "contributor_count": repo.contributor_count,
                 "last_activity": (
-                    repo.last_activity.strftime("%Y-%m-%d")
-                    if repo.last_activity > datetime.min
-                    else "Never"
+                    repo.last_activity.strftime("%Y-%m-%d") if repo.last_activity > datetime.min else "Never"
                 ),
                 "is_orphaned": repo.is_orphaned,
                 "pipeline_count": repo.pipeline_count,
@@ -82,37 +78,21 @@ class HTMLReportGenerator:
                 "commit_frequency": round(repo.commit_frequency, 3),
                 "default_branch": repo.default_branch,
                 "pipeline_success_rate": round(repo.pipeline_success_rate, 1),
-                "avg_pipeline_duration": (
-                    round(repo.avg_pipeline_duration, 1)
-                    if repo.avg_pipeline_duration
-                    else 0
-                ),
+                "avg_pipeline_duration": (round(repo.avg_pipeline_duration, 1) if repo.avg_pipeline_duration else 0),
             }
             repo_data.append(repo_dict)
 
         # Sort repositories for different views
         largest_repos = sorted(repo_data, key=lambda x: x["size_mb"], reverse=True)[:10]
-        most_active_repos = sorted(
-            repo_data, key=lambda x: x["commit_count"], reverse=True
-        )[:10]
+        most_active_repos = sorted(repo_data, key=lambda x: x["commit_count"], reverse=True)[:10]
         orphaned_repos = [r for r in repo_data if r["is_orphaned"]]
         lfs_repos = [r for r in repo_data if r["lfs_size_mb"] > 0]
-        binary_heavy_repos = [
-            r
-            for r in repo_data
-            if r["binary_files_count"] > 0 and r["lfs_size_mb"] == 0
-        ]
+        binary_heavy_repos = [r for r in repo_data if r["binary_files_count"] > 0 and r["lfs_size_mb"] == 0]
 
         # New enhanced views
-        most_complex_repos = sorted(
-            repo_data, key=lambda x: x["complexity_score"], reverse=True
-        )[:10]
-        healthiest_repos = sorted(
-            repo_data, key=lambda x: x["health_score"], reverse=True
-        )[:10]
-        hottest_repos = sorted(
-            repo_data, key=lambda x: x["hotness_score"], reverse=True
-        )[:10]
+        most_complex_repos = sorted(repo_data, key=lambda x: x["complexity_score"], reverse=True)[:10]
+        healthiest_repos = sorted(repo_data, key=lambda x: x["health_score"], reverse=True)[:10]
+        hottest_repos = sorted(repo_data, key=lambda x: x["hotness_score"], reverse=True)[:10]
         lowest_health_repos = sorted(repo_data, key=lambda x: x["health_score"])[:10]
 
         # Calculate percentages for pie charts
@@ -124,15 +104,11 @@ class HTMLReportGenerator:
         if system_dict["total_lfs_size_gb"] > 0:
             storage_breakdown["LFS Objects"] = system_dict["total_lfs_size_gb"]
         if system_dict["total_artifacts_size_gb"] > 0:
-            storage_breakdown["CI/CD Artifacts"] = system_dict[
-                "total_artifacts_size_gb"
-            ]
+            storage_breakdown["CI/CD Artifacts"] = system_dict["total_artifacts_size_gb"]
         if system_dict["total_packages_size_gb"] > 0:
             storage_breakdown["Packages"] = system_dict["total_packages_size_gb"]
         if system_dict["total_container_registry_size_gb"] > 0:
-            storage_breakdown["Container Images"] = system_dict[
-                "total_container_registry_size_gb"
-            ]
+            storage_breakdown["Container Images"] = system_dict["total_container_registry_size_gb"]
 
         # If we have no detailed breakdown, create repository-based categories
         if len(storage_breakdown) <= 1:
@@ -168,13 +144,9 @@ class HTMLReportGenerator:
             "lowest_health_repos": lowest_health_repos,
             "storage_breakdown": storage_breakdown,
             "storage_breakdown_json": json.dumps(storage_breakdown),
-            "language_distribution_json": json.dumps(
-                system_dict["language_distribution"]
-            ),
+            "language_distribution_json": json.dumps(system_dict["language_distribution"]),
             "fetch_heatmap_json": json.dumps(system_dict["fetch_heatmap_data"]),
-            "analysis_timestamp": analysis_data.get(
-                "analysis_timestamp", datetime.now().isoformat()
-            ),
+            "analysis_timestamp": analysis_data.get("analysis_timestamp", datetime.now().isoformat()),
             "total_storage_gb": sum(storage_breakdown.values()),
         }
 
@@ -216,7 +188,10 @@ class HTMLReportGenerator:
         .critical { background-color: #f8d7da; border-left: 4px solid #dc3545; }
         .warning { background-color: #d1ecf1; border-left: 4px solid #0dcaf0; }
         .chart-container { position: relative; height: 400px; margin: 20px 0; }
-        .recommendation { background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 0.375rem; padding: 1rem; margin: 0.5rem 0; }
+        .recommendation {
+            background-color: #d4edda; border: 1px solid #c3e6cb;
+            border-radius: 0.375rem; padding: 1rem; margin: 0.5rem 0;
+        }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
     </style>
 </head>

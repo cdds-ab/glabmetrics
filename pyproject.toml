@@ -130,3 +130,20 @@ version_files = [
 ]
 
 # PDM versioning managed by commitizen
+
+[tool.black]
+line-length = 120
+target-version = ["py39", "py310", "py311", "py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+(
+  /(
+      \.eggs
+    | \.git
+    | \.venv
+    | venv
+    | build
+    | dist
+  )/
+)
+'''

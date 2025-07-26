@@ -58,9 +58,7 @@ class PerformanceTracker:
             # Block already running, ignore
             return
 
-        self.current_blocks[block_name] = APIBlockTiming(
-            name=block_name, start_time=time.time()
-        )
+        self.current_blocks[block_name] = APIBlockTiming(name=block_name, start_time=time.time())
 
     def end_api_block(self, block_name: str, data_points: int = 0) -> None:
         """End timing an API block."""
@@ -75,9 +73,7 @@ class PerformanceTracker:
         self.completed_blocks.append(block)
         del self.current_blocks[block_name]
 
-    def add_api_call(
-        self, block_name: str, success: bool = True, error_message: str = ""
-    ) -> None:
+    def add_api_call(self, block_name: str, success: bool = True, error_message: str = "") -> None:
         """Record an API call within a block."""
         self.total_api_calls += 1
 
@@ -103,9 +99,7 @@ class PerformanceTracker:
         total_duration = time.time() - self.total_start_time
 
         # Sort blocks by duration (slowest first)
-        slowest_blocks = sorted(
-            self.completed_blocks, key=lambda x: x.duration, reverse=True
-        )[:5]
+        slowest_blocks = sorted(self.completed_blocks, key=lambda x: x.duration, reverse=True)[:5]
 
         # Analyze error patterns
         error_summary = defaultdict(int)
@@ -124,9 +118,7 @@ class PerformanceTracker:
                     error_summary["Other Errors"] += 1
 
         # Generate recommendations
-        recommendations = self._generate_performance_recommendations(
-            slowest_blocks, error_summary
-        )
+        recommendations = self._generate_performance_recommendations(slowest_blocks, error_summary)
 
         return CollectionPerformanceStats(
             total_duration=total_duration,
@@ -199,12 +191,8 @@ class PerformanceTracker:
         print(f"Repositories Processed: {self.repository_count}")
 
         print("\nCompleted API Blocks:")
-        for block in sorted(
-            self.completed_blocks, key=lambda x: x.duration, reverse=True
-        ):
-            print(
-                f"  {block.name}: {block.duration:.1f}s ({block.api_calls_count} calls)"
-            )
+        for block in sorted(self.completed_blocks, key=lambda x: x.duration, reverse=True):
+            print(f"  {block.name}: {block.duration:.1f}s ({block.api_calls_count} calls)")
 
         if self.current_blocks:
             print("\nCurrently Running:")
