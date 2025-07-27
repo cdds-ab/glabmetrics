@@ -1,12 +1,15 @@
 """Enhanced Performance Guidelines & Caching Analyzer - ChatGPT Prompt 6 Implementation"""
 
+import concurrent.futures
 import json
 import logging
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
 from rich.console import Console
+from rich.progress import Progress
 from rich.table import Table
 
 from .gitlab_client import GitLabClient
@@ -63,87 +66,133 @@ class PerformanceSystemAnalysis:
 class EnhancedPerformanceAnalyzer:
     """Analyzes performance guidelines and caching according to ChatGPT Prompt 6."""
 
-    def __init__(self, gitlab_client: GitLabClient):
+    def __init__(self, gitlab_client: GitLabClient, max_workers: int = 8):
         self.client = gitlab_client
+        self.max_workers = max_workers
+        self._lock = threading.Lock()
+        self._processed_count = 0
 
     def collect_performance_kpis(
         self, projects: List[Dict]
     ) -> List[PerformanceMetrics]:
         """
-        ChatGPT Prompt 6 - collect_section:
+        ChatGPT Prompt 6 - collect_section (Parallelized):
         For each project gather:
         - id, path_with_namespace
         - CI performance: pipeline durations, cache configs
         - Repository size, LFS usage, large files
         - Build configurations: package.json, requirements.txt, pom.xml
         """
-        console.print("[cyan]⚡ Collecting Performance & Caching KPIs...[/cyan]")
+        if not projects:
+            return []
 
+        console.print(
+            f"[cyan]⚡ Collecting Performance & Caching KPIs for {len(projects)} projects "
+            f"(using {self.max_workers} workers)...[/cyan]"
+        )
+
+        # Reset progress tracking
+        self._processed_count = 0
         metrics = []
 
-        for i, project in enumerate(projects, 1):
-            console.print(
-                f"[blue]Processing {project['path_with_namespace']} ({i}/{len(projects)})[/blue]"
+        # Use progress bar for better UX
+        with Progress() as progress:
+            task = progress.add_task(
+                "[cyan]Processing projects...", total=len(projects)
             )
 
-            try:
-                project_id = project["id"]
+            # Process projects in parallel
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.max_workers
+            ) as executor:
+                # Submit all projects for processing
+                future_to_project = {
+                    executor.submit(self._analyze_single_project, project): project
+                    for project in projects
+                }
 
-                # Get basic project statistics
-                repo_size = project.get("statistics", {}).get("repository_size", 0) / (
-                    1024 * 1024
-                )  # MB
-                lfs_size = project.get("statistics", {}).get("lfs_objects_size", 0) / (
-                    1024 * 1024
-                )  # MB
+                # Collect results as they complete
+                for future in concurrent.futures.as_completed(future_to_project):
+                    project = future_to_project[future]
+                    try:
+                        metric = future.result()
+                        if metric:
+                            metrics.append(metric)
 
-                # Analyze CI performance
-                ci_analysis = self._analyze_ci_performance(project_id)
+                        # Update progress
+                        with self._lock:
+                            self._processed_count += 1
+                            progress.update(
+                                task,
+                                advance=1,
+                                description=f"[cyan]Processed {self._processed_count}/{len(projects)} projects[/cyan]",
+                            )
 
-                # Analyze repository performance
-                repo_analysis = self._analyze_repository_performance(
-                    project_id, repo_size, lfs_size
-                )
-
-                # Analyze build configurations
-                build_analysis = self._analyze_build_configurations(project_id)
-
-                # Calculate performance score
-                perf_score, issues, recommendations = self._calculate_performance_score(
-                    ci_analysis, repo_analysis, build_analysis
-                )
-
-                metrics.append(
-                    PerformanceMetrics(
-                        id=project_id,
-                        path_with_namespace=project["path_with_namespace"],
-                        avg_pipeline_duration=ci_analysis["avg_duration"],
-                        cache_usage=ci_analysis["cache_config"],
-                        dockerfile_optimizations=ci_analysis[
-                            "dockerfile_optimizations"
-                        ],
-                        repository_size_mb=repo_size,
-                        lfs_usage=repo_analysis["lfs_config"],
-                        large_files=repo_analysis["large_files"],
-                        dependency_caching=build_analysis["dependency_caching"],
-                        build_tool_configs=build_analysis["configs"],
-                        performance_score=perf_score,
-                        performance_issues=issues,
-                        performance_recommendations=recommendations,
-                        gitlab_url=self.client.gitlab_url,
-                    )
-                )
-
-            except Exception as e:
-                logger.error(
-                    f"Error analyzing performance for {project['path_with_namespace']}: {e}"
-                )
-                continue
+                    except Exception as e:
+                        logger.error(
+                            f"Error analyzing performance for {project['path_with_namespace']}: {e}"
+                        )
+                        # Still update progress for failed projects
+                        with self._lock:
+                            self._processed_count += 1
+                            progress.update(task, advance=1)
 
         console.print(
             f"[green]✅ Collected Performance KPIs for {len(metrics)} projects[/green]"
         )
         return metrics
+
+    def _analyze_single_project(self, project: Dict) -> PerformanceMetrics:
+        """Analyze performance metrics for a single project (thread-safe)."""
+        try:
+            project_id = project["id"]
+
+            # Get basic project statistics
+            repo_size = project.get("statistics", {}).get("repository_size", 0) / (
+                1024 * 1024
+            )  # MB
+            lfs_size = project.get("statistics", {}).get("lfs_objects_size", 0) / (
+                1024 * 1024
+            )  # MB
+
+            # Analyze CI performance
+            ci_analysis = self._analyze_ci_performance(project_id)
+
+            # Analyze repository performance
+            repo_analysis = self._analyze_repository_performance(
+                project_id, repo_size, lfs_size
+            )
+
+            # Analyze build configurations
+            build_analysis = self._analyze_build_configurations(project_id)
+
+            # Calculate performance score
+            perf_score, issues, recommendations = self._calculate_performance_score(
+                ci_analysis, repo_analysis, build_analysis
+            )
+
+            return PerformanceMetrics(
+                id=project_id,
+                path_with_namespace=project["path_with_namespace"],
+                avg_pipeline_duration=ci_analysis["avg_duration"],
+                cache_usage=ci_analysis["cache_config"],
+                dockerfile_optimizations=ci_analysis["dockerfile_optimizations"],
+                repository_size_mb=repo_size,
+                lfs_usage=repo_analysis["lfs_config"],
+                large_files=repo_analysis["large_files"],
+                dependency_caching=build_analysis["dependency_caching"],
+                build_tool_configs=build_analysis["configs"],
+                performance_score=perf_score,
+                performance_issues=issues,
+                performance_recommendations=recommendations,
+                gitlab_url=self.client.gitlab_url,
+            )
+
+        except Exception as e:
+            logger.error(
+                f"Error analyzing performance for {project['path_with_namespace']}: {e}"
+            )
+            return None
 
     def _analyze_ci_performance(self, project_id: int) -> Dict[str, Any]:
         """Analyze CI pipeline performance and caching."""

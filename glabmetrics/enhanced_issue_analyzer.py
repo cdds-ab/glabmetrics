@@ -1,11 +1,14 @@
 """Enhanced Issue Analysis based on ChatGPT Prompt 1 - Ticket-KPI & älteste Issues."""
 
+import concurrent.futures
 import statistics
+import threading
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional
 
 from dateutil.parser import parse as parse_date
+from rich.progress import Progress
 
 from .gitlab_client import GitLabClient
 
@@ -85,31 +88,73 @@ class IssueSystemAnalysis:
 class EnhancedIssueAnalyzer:
     """Enhanced Issue Analysis implementing ChatGPT Prompt 1 specifications."""
 
-    def __init__(self, client: GitLabClient):
+    def __init__(self, client: GitLabClient, max_workers: int = 8):
         self.client = client
+        self.max_workers = max_workers
+        self._lock = threading.Lock()
+        self._processed_count = 0
 
     def collect_issue_kpis(self, projects: List[Dict]) -> List[IssueKPIMetrics]:
         """
-        Collect issue KPIs for all projects following ChatGPT Prompt 1 pattern.
+        Collect issue KPIs for all projects following ChatGPT Prompt 1 pattern (Parallelized).
 
         collect_section: Fetch for each project:
         - id, path_with_namespace
         - open_issues_count
         - 5 oldest open issues: iid, title, created_at, author.username
         """
-        print("🎫 Collecting Issue KPIs...")
+        if not projects:
+            return []
 
+        print(
+            f"🎫 Collecting Issue KPIs for {len(projects)} projects (using {self.max_workers} workers)..."
+        )
+
+        # Reset progress tracking
+        self._processed_count = 0
         issue_metrics = []
-        for i, project in enumerate(projects, 1):
-            print(f"  Processing {i}/{len(projects)}: {project.get('name', 'Unknown')}")
 
-            try:
-                metrics = self._analyze_project_issues(project)
-                if metrics:
-                    issue_metrics.append(metrics)
-            except Exception as e:
-                print(f"    ⚠️ Error analyzing {project.get('name', 'Unknown')}: {e}")
-                continue
+        # Use progress bar for better UX
+        with Progress() as progress:
+            task = progress.add_task(
+                "[cyan]Processing projects...", total=len(projects)
+            )
+
+            # Process projects in parallel
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.max_workers
+            ) as executor:
+                # Submit all projects for processing
+                future_to_project = {
+                    executor.submit(self._analyze_project_issues, project): project
+                    for project in projects
+                }
+
+                # Collect results as they complete
+                for future in concurrent.futures.as_completed(future_to_project):
+                    project = future_to_project[future]
+                    try:
+                        metrics = future.result()
+                        if metrics:
+                            issue_metrics.append(metrics)
+
+                        # Update progress
+                        with self._lock:
+                            self._processed_count += 1
+                            progress.update(
+                                task,
+                                advance=1,
+                                description=f"[cyan]Processed {self._processed_count}/{len(projects)} projects[/cyan]",
+                            )
+
+                    except Exception as e:
+                        print(
+                            f"    ⚠️ Error analyzing {project.get('name', 'Unknown')}: {e}"
+                        )
+                        # Still update progress for failed projects
+                        with self._lock:
+                            self._processed_count += 1
+                            progress.update(task, advance=1)
 
         return issue_metrics
 

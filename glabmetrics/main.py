@@ -296,14 +296,16 @@ def cli(
 
                 enhanced_analysis = {}
 
-                # Initialize all analyzers
+                # Initialize all analyzers with parallel processing
                 analyzers = {
-                    "issue": EnhancedIssueAnalyzer(client),
+                    "issue": EnhancedIssueAnalyzer(client, max_workers=workers),
                     "mr": EnhancedMRAnalyzer(client),
                     "ci": EnhancedCIAnalyzer(client),
                     "ci_config": EnhancedCIConfigAnalyzer(client),
                     "submodule": EnhancedSubmoduleAnalyzer(client),
-                    "performance": EnhancedPerformanceAnalyzer(client),
+                    "performance": EnhancedPerformanceAnalyzer(
+                        client, max_workers=workers
+                    ),
                 }
 
                 # Run all KPI collections in parallel
