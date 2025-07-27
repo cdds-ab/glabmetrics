@@ -1,12 +1,13 @@
 """Tests for GitLab data storage and serialization."""
 
-import pytest
 import json
-from datetime import datetime
 from collections import defaultdict
+from datetime import datetime
 
-from glabmetrics.data_storage import GitLabDataStorage
+import pytest
+
 from glabmetrics.analyzer import RepositoryStats
+from glabmetrics.data_storage import GitLabDataStorage
 from glabmetrics.performance_tracker import CollectionPerformanceStats
 
 
@@ -25,7 +26,13 @@ class TestGitLabDataStorage:
         assert temp_data_file.exists()
 
         # Load data
-        loaded_repos, loaded_timestamp = storage.load_data()
+        loaded_data, loaded_timestamp = storage.load_data()
+
+        # Since we save version 2.0, we get structured data
+        if isinstance(loaded_data, dict):
+            loaded_repos = loaded_data["repositories"]
+        else:
+            loaded_repos = loaded_data
 
         # Verify data integrity
         assert len(loaded_repos) == 1
@@ -75,7 +82,13 @@ class TestGitLabDataStorage:
         storage.save_data([repo], datetime.now())
 
         # Should load successfully
-        loaded_repos, _ = storage.load_data()
+        loaded_data, _ = storage.load_data()
+
+        # Handle new structured format
+        if isinstance(loaded_data, dict):
+            loaded_repos = loaded_data["repositories"]
+        else:
+            loaded_repos = loaded_data
         loaded_repo = loaded_repos[0]
 
         # Verify complex objects are preserved as regular dicts
@@ -121,7 +134,13 @@ class TestGitLabDataStorage:
         storage = GitLabDataStorage(str(temp_data_file))
         storage.save_data([repo_with_activity, repo_without_activity], datetime.now())
 
-        loaded_repos, _ = storage.load_data()
+        loaded_data, _ = storage.load_data()
+
+        # Handle new structured format
+        if isinstance(loaded_data, dict):
+            loaded_repos = loaded_data["repositories"]
+        else:
+            loaded_repos = loaded_data
 
         # Active repo should have proper datetime
         active_repo = next(r for r in loaded_repos if r.name == "active-repo")
@@ -166,7 +185,13 @@ class TestGitLabDataStorage:
             json.dump(old_format_data, f)
 
         storage = GitLabDataStorage(str(temp_data_file))
-        loaded_repos, _ = storage.load_data()
+        loaded_data, _ = storage.load_data()
+
+        # Handle old format compatibility
+        if isinstance(loaded_data, dict):
+            loaded_repos = loaded_data["repositories"]
+        else:
+            loaded_repos = loaded_data
 
         assert len(loaded_repos) == 1
         repo = loaded_repos[0]
@@ -262,7 +287,13 @@ class TestGitLabDataStorage:
 
         # Should handle empty/None values gracefully
         storage.save_data([repo], datetime.now())
-        loaded_repos, _ = storage.load_data()
+        loaded_data, _ = storage.load_data()
+
+        # Handle new structured format
+        if isinstance(loaded_data, dict):
+            loaded_repos = loaded_data["repositories"]
+        else:
+            loaded_repos = loaded_data
 
         loaded_repo = loaded_repos[0]
         assert loaded_repo.languages == {}
@@ -270,13 +301,21 @@ class TestGitLabDataStorage:
         assert loaded_repo.fetch_activity == {}
         assert loaded_repo.gitlab_version == ""
 
-    def test_multiple_repositories_serialization(self, temp_data_file, multiple_repository_stats):
+    def test_multiple_repositories_serialization(
+        self, temp_data_file, multiple_repository_stats
+    ):
         """Test serialization of multiple repositories with different characteristics."""
         storage = GitLabDataStorage(str(temp_data_file))
         timestamp = datetime.now()
 
         storage.save_data(multiple_repository_stats, timestamp)
-        loaded_repos, loaded_timestamp = storage.load_data()
+        loaded_data, loaded_timestamp = storage.load_data()
+
+        # Handle new structured format
+        if isinstance(loaded_data, dict):
+            loaded_repos = loaded_data["repositories"]
+        else:
+            loaded_repos = loaded_data
 
         assert len(loaded_repos) == len(multiple_repository_stats)
 

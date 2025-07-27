@@ -1,10 +1,10 @@
 """Tests for template data preparation and handling."""
 
-from datetime import datetime
 import json
+from datetime import datetime
 
-from glabmetrics.report_generator import HTMLReportGenerator
 from glabmetrics.analyzer import RepositoryStats, SystemStats
+from glabmetrics.report_generator import HTMLReportGenerator
 
 
 class TestTemplateDataPreparation:
@@ -41,7 +41,7 @@ class TestTemplateDataPreparation:
             total_lfs_size_gb=2.5,
             total_artifacts_size_gb=1.5,
             total_packages_size_gb=0.5,
-            total_container_registry_size_gb=1.0
+            total_container_registry_size_gb=1.0,
         )
 
         analysis_results = {
@@ -76,20 +76,35 @@ class TestTemplateDataPreparation:
         # Create repositories with different sizes
         repos = [
             RepositoryStats(
-                id=1, name="large-repo", path_with_namespace="group/large-repo",
-                size_mb=500.0, commit_count=100, contributor_count=5,
-                last_activity=datetime.now(), is_orphaned=False
+                id=1,
+                name="large-repo",
+                path_with_namespace="group/large-repo",
+                size_mb=500.0,
+                commit_count=100,
+                contributor_count=5,
+                last_activity=datetime.now(),
+                is_orphaned=False,
             ),
             RepositoryStats(
-                id=2, name="medium-repo", path_with_namespace="group/medium-repo",
-                size_mb=50.0, commit_count=20, contributor_count=2,
-                last_activity=datetime.now(), is_orphaned=False
+                id=2,
+                name="medium-repo",
+                path_with_namespace="group/medium-repo",
+                size_mb=50.0,
+                commit_count=20,
+                contributor_count=2,
+                last_activity=datetime.now(),
+                is_orphaned=False,
             ),
             RepositoryStats(
-                id=3, name="small-repo", path_with_namespace="group/small-repo",
-                size_mb=5.0, commit_count=10, contributor_count=1,
-                last_activity=datetime.now(), is_orphaned=False
-            )
+                id=3,
+                name="small-repo",
+                path_with_namespace="group/small-repo",
+                size_mb=5.0,
+                commit_count=10,
+                contributor_count=1,
+                last_activity=datetime.now(),
+                is_orphaned=False,
+            ),
         ]
 
         # System stats with minimal storage detail (triggers fallback)
@@ -104,7 +119,7 @@ class TestTemplateDataPreparation:
             total_lfs_size_gb=0.0,
             total_artifacts_size_gb=0.0,
             total_packages_size_gb=0.0,
-            total_container_registry_size_gb=0.0
+            total_container_registry_size_gb=0.0,
         )
 
         analysis_results = {
@@ -151,7 +166,7 @@ class TestTemplateDataPreparation:
             default_branch="main",
             pipeline_success_rate=94.2,
             avg_pipeline_duration=125.6,
-            binary_files=["file1.exe", "file2.dll", "file3.zip"]
+            binary_files=["file1.exe", "file2.dll", "file3.zip"],
         )
 
         system_stats = SystemStats(
@@ -165,7 +180,7 @@ class TestTemplateDataPreparation:
             total_lfs_size_gb=0.12,
             total_artifacts_size_gb=0.07,
             total_packages_size_gb=0.0,
-            total_container_registry_size_gb=0.0
+            total_container_registry_size_gb=0.0,
         )
 
         analysis_results = {
@@ -202,26 +217,50 @@ class TestTemplateDataPreparation:
         """Test repository sorting and filtering for different views."""
         repos = [
             RepositoryStats(
-                id=1, name="huge-repo", path_with_namespace="group/huge-repo",
-                size_mb=2000.0, commit_count=50, contributor_count=2,
-                last_activity=datetime.now(), is_orphaned=False,
-                complexity_score=95.0, health_score=60.0, hotness_score=40.0,
-                lfs_size_mb=100.0, binary_files=["big.exe"]
+                id=1,
+                name="huge-repo",
+                path_with_namespace="group/huge-repo",
+                size_mb=2000.0,
+                commit_count=50,
+                contributor_count=2,
+                last_activity=datetime.now(),
+                is_orphaned=False,
+                complexity_score=95.0,
+                health_score=60.0,
+                hotness_score=40.0,
+                lfs_size_mb=100.0,
+                binary_files=["big.exe"],
             ),
             RepositoryStats(
-                id=2, name="active-repo", path_with_namespace="group/active-repo",
-                size_mb=100.0, commit_count=1000, contributor_count=10,
-                last_activity=datetime.now(), is_orphaned=False,
-                complexity_score=70.0, health_score=95.0, hotness_score=90.0,
-                lfs_size_mb=0.0, binary_files=[]
+                id=2,
+                name="active-repo",
+                path_with_namespace="group/active-repo",
+                size_mb=100.0,
+                commit_count=1000,
+                contributor_count=10,
+                last_activity=datetime.now(),
+                is_orphaned=False,
+                complexity_score=70.0,
+                health_score=95.0,
+                hotness_score=90.0,
+                lfs_size_mb=0.0,
+                binary_files=[],
             ),
             RepositoryStats(
-                id=3, name="orphan-repo", path_with_namespace="legacy/orphan-repo",
-                size_mb=50.0, commit_count=10, contributor_count=1,
-                last_activity=datetime(2024, 1, 1), is_orphaned=True,
-                complexity_score=30.0, health_score=20.0, hotness_score=5.0,
-                lfs_size_mb=0.0, binary_files=["old.dll", "legacy.exe"]
-            )
+                id=3,
+                name="orphan-repo",
+                path_with_namespace="legacy/orphan-repo",
+                size_mb=50.0,
+                commit_count=10,
+                contributor_count=1,
+                last_activity=datetime(2024, 1, 1),
+                is_orphaned=True,
+                complexity_score=30.0,
+                health_score=20.0,
+                hotness_score=5.0,
+                lfs_size_mb=0.0,
+                binary_files=["old.dll", "legacy.exe"],
+            ),
         ]
 
         system_stats = SystemStats(
@@ -235,7 +274,7 @@ class TestTemplateDataPreparation:
             total_lfs_size_gb=0.1,
             total_artifacts_size_gb=0.0,
             total_packages_size_gb=0.0,
-            total_container_registry_size_gb=0.0
+            total_container_registry_size_gb=0.0,
         )
 
         analysis_results = {
@@ -275,7 +314,9 @@ class TestTemplateDataPreparation:
 
         # Test complex scoring sorts
         most_complex = template_data["most_complex_repos"]
-        assert most_complex[0]["complexity_score"] >= most_complex[1]["complexity_score"]
+        assert (
+            most_complex[0]["complexity_score"] >= most_complex[1]["complexity_score"]
+        )
 
         healthiest = template_data["healthiest_repos"]
         assert healthiest[0]["health_score"] >= healthiest[1]["health_score"]
@@ -299,7 +340,7 @@ class TestTemplateDataPreparation:
             total_packages_size_gb=0.0,
             total_container_registry_size_gb=0.0,
             language_distribution={"Python": 50, "JavaScript": 30, "HTML": 20},
-            fetch_heatmap_data={"2025-07-26": 15, "2025-07-25": 10}
+            fetch_heatmap_data={"2025-07-26": 15, "2025-07-25": 10},
         )
 
         analysis_results = {
@@ -314,9 +355,9 @@ class TestTemplateDataPreparation:
 
         # Test that all JSON fields are valid JSON
         json_fields = [
-            'storage_breakdown_json',
-            'language_distribution_json',
-            'fetch_heatmap_json'
+            "storage_breakdown_json",
+            "language_distribution_json",
+            "fetch_heatmap_json",
         ]
 
         for field in json_fields:
@@ -328,10 +369,10 @@ class TestTemplateDataPreparation:
             assert isinstance(parsed, dict), f"{field} should parse to a dict"
 
         # Test specific content
-        lang_data = json.loads(template_data['language_distribution_json'])
+        lang_data = json.loads(template_data["language_distribution_json"])
         assert lang_data["Python"] == 50
         assert lang_data["JavaScript"] == 30
 
-        heatmap_data = json.loads(template_data['fetch_heatmap_json'])
+        heatmap_data = json.loads(template_data["fetch_heatmap_json"])
         assert "2025-07-26" in heatmap_data
         assert heatmap_data["2025-07-26"] == 15

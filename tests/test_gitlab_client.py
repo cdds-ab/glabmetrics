@@ -1,7 +1,8 @@
 """Tests for GitLab API client."""
 
-import responses
 import unittest.mock
+
+import responses
 from requests.exceptions import Timeout
 
 from glabmetrics.gitlab_client import GitLabClient
@@ -22,7 +23,9 @@ class TestGitLabClientInitialization:
 
     def test_initialization_with_performance_tracker(self, mock_performance_tracker):
         """Test initialization with performance tracker."""
-        client = GitLabClient("https://gitlab.example.com", "test-token", mock_performance_tracker)
+        client = GitLabClient(
+            "https://gitlab.example.com", "test-token", mock_performance_tracker
+        )
 
         assert client.performance_tracker == mock_performance_tracker
 
@@ -141,7 +144,9 @@ class TestVersionDetection:
             json={"id": 1},
             status=200,
         )
-        responses.add(responses.GET, "https://gitlab.example.com/api/v4/version", status=404)
+        responses.add(
+            responses.GET, "https://gitlab.example.com/api/v4/version", status=404
+        )
         responses.add(
             responses.GET,
             "https://gitlab.example.com/api/v4/application/statistics",
@@ -182,7 +187,9 @@ class TestPaginatedRequests:
     def test_multi_page_request(self):
         """Test request with multiple pages."""
         # First page
-        page1_data = [{"id": i, "name": f"repo_{i}"} for i in range(1, 101)]  # 100 items
+        page1_data = [
+            {"id": i, "name": f"repo_{i}"} for i in range(1, 101)
+        ]  # 100 items
         responses.add(
             responses.GET,
             "https://gitlab.example.com/api/v4/projects",
@@ -191,7 +198,9 @@ class TestPaginatedRequests:
         )
 
         # Second page
-        page2_data = [{"id": i, "name": f"repo_{i}"} for i in range(101, 151)]  # 50 items
+        page2_data = [
+            {"id": i, "name": f"repo_{i}"} for i in range(101, 151)
+        ]  # 50 items
         responses.add(
             responses.GET,
             "https://gitlab.example.com/api/v4/projects",
@@ -235,7 +244,9 @@ class TestErrorHandling:
             status=404,
         )
 
-        client = GitLabClient("https://gitlab.example.com", "token", mock_performance_tracker)
+        client = GitLabClient(
+            "https://gitlab.example.com", "token", mock_performance_tracker
+        )
         projects = client._make_request("projects")
 
         assert projects == []
@@ -257,7 +268,9 @@ class TestErrorHandling:
             callback=timeout_callback,
         )
 
-        client = GitLabClient("https://gitlab.example.com", "token", mock_performance_tracker)
+        client = GitLabClient(
+            "https://gitlab.example.com", "token", mock_performance_tracker
+        )
         projects = client._make_request("projects")
 
         assert projects == []
@@ -283,7 +296,9 @@ class TestSpecificEndpoints:
     """Test specific API endpoints."""
 
     @responses.activate
-    def test_get_projects(self, sample_gitlab_projects_response, mock_performance_tracker):
+    def test_get_projects(
+        self, sample_gitlab_projects_response, mock_performance_tracker
+    ):
         """Test get_projects method."""
         responses.add(
             responses.GET,
@@ -292,7 +307,9 @@ class TestSpecificEndpoints:
             status=200,
         )
 
-        client = GitLabClient("https://gitlab.example.com", "token", mock_performance_tracker)
+        client = GitLabClient(
+            "https://gitlab.example.com", "token", mock_performance_tracker
+        )
         projects = client.get_projects()
 
         assert len(projects) == 2
@@ -300,10 +317,14 @@ class TestSpecificEndpoints:
 
         # Should track performance block
         mock_performance_tracker.start_api_block.assert_called_with("Project Discovery")
-        mock_performance_tracker.end_api_block.assert_called_with("Project Discovery", 2)
+        mock_performance_tracker.end_api_block.assert_called_with(
+            "Project Discovery", 2
+        )
 
     @responses.activate
-    def test_get_project_commits(self, sample_commits_response, mock_performance_tracker):
+    def test_get_project_commits(
+        self, sample_commits_response, mock_performance_tracker
+    ):
         """Test get_project_commits method."""
         responses.add(
             responses.GET,
@@ -312,7 +333,9 @@ class TestSpecificEndpoints:
             status=200,
         )
 
-        client = GitLabClient("https://gitlab.example.com", "token", mock_performance_tracker)
+        client = GitLabClient(
+            "https://gitlab.example.com", "token", mock_performance_tracker
+        )
         commits = client.get_project_commits(123)
 
         assert len(commits) == 2
@@ -343,14 +366,18 @@ class TestSpecificEndpoints:
             status=200,
         )
 
-        client = GitLabClient("https://gitlab.example.com", "token", mock_performance_tracker)
+        client = GitLabClient(
+            "https://gitlab.example.com", "token", mock_performance_tracker
+        )
         result = client.get_project_with_statistics(123)
 
         assert result["statistics"]["lfs_objects_size"] == 52428800
         assert result["statistics"]["job_artifacts_size"] == 10485760
 
         # Should track performance block
-        mock_performance_tracker.start_api_block.assert_called_with("Detailed Storage Statistics")
+        mock_performance_tracker.start_api_block.assert_called_with(
+            "Detailed Storage Statistics"
+        )
 
     @responses.activate
     def test_get_project_job_artifacts_list(self, mock_performance_tracker):
@@ -374,7 +401,9 @@ class TestSpecificEndpoints:
                 "name": "test",
                 "status": "success",
                 "created_at": "2025-07-24T15:00:00Z",
-                "artifacts": {"file": {"filename": "test-results.xml", "size": 1048576}},
+                "artifacts": {
+                    "file": {"filename": "test-results.xml", "size": 1048576}
+                },
             },
         ]
 
@@ -393,7 +422,9 @@ class TestSpecificEndpoints:
                 status=200,
             )
 
-        client = GitLabClient("https://gitlab.example.com", "token", mock_performance_tracker)
+        client = GitLabClient(
+            "https://gitlab.example.com", "token", mock_performance_tracker
+        )
         artifacts = client.get_project_job_artifacts_list(123)
 
         assert len(artifacts) == 4  # 2 jobs × 2 pipelines
@@ -402,7 +433,9 @@ class TestSpecificEndpoints:
         assert artifacts[0]["artifact_filename"] == "artifacts.zip"
 
         # Should track performance block
-        mock_performance_tracker.start_api_block.assert_called_with("Job Artifacts Analysis")
+        mock_performance_tracker.start_api_block.assert_called_with(
+            "Job Artifacts Analysis"
+        )
 
 
 class TestPerformanceTracking:
@@ -418,17 +451,25 @@ class TestPerformanceTracking:
             status=200,
         )
 
-        client = GitLabClient("https://gitlab.example.com", "token", mock_performance_tracker)
+        client = GitLabClient(
+            "https://gitlab.example.com", "token", mock_performance_tracker
+        )
         client._make_request("projects")
 
-        mock_performance_tracker.add_api_call.assert_called_with("API Requests", success=True)
+        mock_performance_tracker.add_api_call.assert_called_with(
+            "API Requests", success=True
+        )
 
     @responses.activate
     def test_failed_api_call_tracking(self, mock_performance_tracker):
         """Test tracking of failed API calls."""
-        responses.add(responses.GET, "https://gitlab.example.com/api/v4/projects", status=500)
+        responses.add(
+            responses.GET, "https://gitlab.example.com/api/v4/projects", status=500
+        )
 
-        client = GitLabClient("https://gitlab.example.com", "token", mock_performance_tracker)
+        client = GitLabClient(
+            "https://gitlab.example.com", "token", mock_performance_tracker
+        )
         client._make_request("projects")
 
         mock_performance_tracker.add_api_call.assert_called_with(

@@ -1,11 +1,11 @@
 """Data storage and serialization utilities."""
 
 import json
-from pathlib import Path
-from typing import Dict, Any, List, Optional
-from datetime import datetime
-from dataclasses import asdict
 import logging
+from dataclasses import asdict
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 from .analyzer import RepositoryStats
 from .performance_tracker import CollectionPerformanceStats
@@ -21,12 +21,24 @@ class GitLabDataStorage:
 
     def save_data(
         self,
-        repositories: List[RepositoryStats],
+        data_to_save: Any,  # Can be List[RepositoryStats] or Dict with structured data
         analysis_timestamp: datetime,
         performance_stats: Optional[CollectionPerformanceStats] = None,
     ) -> None:
         """Save repository data to JSON file."""
         try:
+            # Handle both old format (List[RepositoryStats]) and new format (Dict)
+            if isinstance(data_to_save, list):
+                # Old format: just repositories
+                repositories = data_to_save
+                enhanced_analysis = None
+                collection_metadata = {}
+            else:
+                # New format: structured data
+                repositories = data_to_save.get("repositories", [])
+                enhanced_analysis = data_to_save.get("enhanced_analysis")
+                collection_metadata = data_to_save.get("collection_metadata", {})
+
             # Convert dataclasses to dictionaries
             repo_dicts = []
             for repo in repositories:
@@ -37,8 +49,15 @@ class GitLabDataStorage:
             data = {
                 "repositories": repo_dicts,
                 "analysis_timestamp": analysis_timestamp.isoformat(),
-                "version": "1.0",
+                "version": "2.0",  # New version with enhanced data
+                "collection_metadata": collection_metadata,
             }
+
+            # Add enhanced analysis if available
+            if enhanced_analysis:
+                data["enhanced_analysis"] = self._serialize_enhanced_analysis(
+                    enhanced_analysis
+                )
 
             # Add performance statistics if available
             if performance_stats:
@@ -63,10 +82,22 @@ class GitLabDataStorage:
             "size_mb": repo.size_mb,
             "commit_count": repo.commit_count,
             "contributor_count": repo.contributor_count,
-            "last_activity": (repo.last_activity.isoformat() if repo.last_activity > datetime.min else None),
+            "last_activity": (
+                repo.last_activity.isoformat()
+                if repo.last_activity > datetime.min
+                else None
+            ),
             "is_orphaned": repo.is_orphaned,
-            "languages": (dict(repo.languages) if hasattr(repo.languages, "items") else repo.languages),
-            "storage_stats": (dict(repo.storage_stats) if hasattr(repo.storage_stats, "items") else repo.storage_stats),
+            "languages": (
+                dict(repo.languages)
+                if hasattr(repo.languages, "items")
+                else repo.languages
+            ),
+            "storage_stats": (
+                dict(repo.storage_stats)
+                if hasattr(repo.storage_stats, "items")
+                else repo.storage_stats
+            ),
             "pipeline_count": repo.pipeline_count,
             "open_mrs": repo.open_mrs,
             "open_issues": repo.open_issues,
@@ -117,11 +148,58 @@ class GitLabDataStorage:
         else:
             return obj if obj is not None else {}
 
-    def load_data(self) -> tuple[List[RepositoryStats], datetime]:
+    def _serialize_enhanced_analysis(
+        self, enhanced_analysis: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Serialize enhanced analysis data for JSON storage."""
+        if not enhanced_analysis:
+            return {}
+
+        try:
+            serialized = {}
+            for key, value in enhanced_analysis.items():
+                serialized[key] = self._serialize_object_recursive(value)
+            return serialized
+        except Exception as e:
+            logger.warning(f"Error serializing enhanced analysis: {e}")
+            return {"error": f"Serialization failed: {str(e)}"}
+
+    def _serialize_object_recursive(self, obj: Any) -> Any:
+        """Recursively serialize objects to JSON-compatible format."""
+        if obj is None:
+            return None
+        elif isinstance(obj, datetime):
+            return obj.isoformat()
+        elif isinstance(obj, (str, int, float, bool)):
+            return obj
+        elif isinstance(obj, (list, tuple)):
+            return [self._serialize_object_recursive(item) for item in obj]
+        elif isinstance(obj, dict):
+            return {k: self._serialize_object_recursive(v) for k, v in obj.items()}
+        elif hasattr(obj, "__dataclass_fields__"):
+            # Handle dataclass objects
+            return self._serialize_object_recursive(asdict(obj))
+        elif hasattr(obj, "__dict__"):
+            # Handle other objects with __dict__
+            return self._serialize_object_recursive(obj.__dict__)
+        elif hasattr(obj, "_asdict"):
+            # Handle named tuples
+            return self._serialize_object_recursive(obj._asdict())
+        else:
+            # Fallback: convert to string
+            return str(obj)
+
+    def load_data(
+        self,
+    ) -> tuple[
+        Any, datetime
+    ]:  # Returns either List[RepositoryStats] or structured Dict
         """Load repository data from JSON file."""
         try:
             if not self.data_file.exists():
-                raise FileNotFoundError(f"Data file {self.data_file} not found. Run with --refresh-data first.")
+                raise FileNotFoundError(
+                    f"Data file {self.data_file} not found. Run with --refresh-data first."
+                )
 
             with open(self.data_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -132,7 +210,9 @@ class GitLabDataStorage:
                 try:
                     # Convert ISO string back to datetime
                     if repo_dict.get("last_activity"):
-                        repo_dict["last_activity"] = datetime.fromisoformat(repo_dict["last_activity"])
+                        repo_dict["last_activity"] = datetime.fromisoformat(
+                            repo_dict["last_activity"]
+                        )
                     else:
                         repo_dict["last_activity"] = datetime.min
 
@@ -158,13 +238,35 @@ class GitLabDataStorage:
                     repositories.append(repo)
 
                 except Exception as e:
-                    logger.warning(f"Error deserializing repository {repo_dict.get('name', 'unknown')}: {e}")
+                    logger.warning(
+                        f"Error deserializing repository {repo_dict.get('name', 'unknown')}: {e}"
+                    )
                     continue
 
             analysis_timestamp = datetime.fromisoformat(data["analysis_timestamp"])
 
-            logger.info(f"Data loaded from {self.data_file} (timestamp: {analysis_timestamp})")
-            return repositories, analysis_timestamp
+            # Check if this is new format with enhanced data
+            version = data.get("version", "1.0")
+            if version == "2.0" and (
+                "enhanced_analysis" in data or "collection_metadata" in data
+            ):
+                # Return structured data for new format
+                structured_data = {
+                    "repositories": repositories,
+                    "enhanced_analysis": data.get("enhanced_analysis"),
+                    "collection_metadata": data.get("collection_metadata", {}),
+                    "performance_stats": data.get("performance_stats"),
+                }
+                logger.info(
+                    f"Enhanced data loaded from {self.data_file} (timestamp: {analysis_timestamp})"
+                )
+                return structured_data, analysis_timestamp
+            else:
+                # Return just repositories for old format
+                logger.info(
+                    f"Data loaded from {self.data_file} (timestamp: {analysis_timestamp})"
+                )
+                return repositories, analysis_timestamp
 
         except Exception as e:
             logger.error(f"Error loading data: {e}")
@@ -214,7 +316,11 @@ def serialize_analysis_results(analysis_results: Dict[str, Any]) -> Dict[str, An
             system_dict["repositories_by_size"] = [
                 {
                     **asdict(repo),
-                    "last_activity": (repo.last_activity.isoformat() if repo.last_activity > datetime.min else None),
+                    "last_activity": (
+                        repo.last_activity.isoformat()
+                        if repo.last_activity > datetime.min
+                        else None
+                    ),
                 }
                 for repo in system_stats.repositories_by_size
             ]
@@ -223,7 +329,11 @@ def serialize_analysis_results(analysis_results: Dict[str, Any]) -> Dict[str, An
             system_dict["most_active_repositories"] = [
                 {
                     **asdict(repo),
-                    "last_activity": (repo.last_activity.isoformat() if repo.last_activity > datetime.min else None),
+                    "last_activity": (
+                        repo.last_activity.isoformat()
+                        if repo.last_activity > datetime.min
+                        else None
+                    ),
                 }
                 for repo in system_stats.most_active_repositories
             ]

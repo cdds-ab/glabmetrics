@@ -1,12 +1,14 @@
 """Main analyzer for GitLab statistics."""
 
-from typing import Dict, List, Any, Optional
-from datetime import datetime, timedelta
 from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
 from dateutil.parser import parse as parse_date
 
 from .gitlab_client import GitLabClient
+from .performance_tracker import PerformanceTracker
 
 
 @dataclass
@@ -88,24 +90,84 @@ class SystemStats:
 class GitLabAnalyzer:
     """Analyzes GitLab instance data."""
 
-    def __init__(self, client: Optional[GitLabClient]):
+    def __init__(
+        self,
+        client: Optional[GitLabClient],
+        performance_tracker: Optional[PerformanceTracker] = None,
+    ):
         self.client = client
         self.repositories: List[RepositoryStats] = []
         self.system_stats: Optional[SystemStats] = None
         self.users: List[Dict] = []
-        self.skip_binary_scan: bool = False
+        self.performance_tracker = performance_tracker
+        self.use_parallel_collection: bool = True  # Default to parallel collection
+        self.max_workers: int = 20  # Default worker count
 
-    def collect_project_data(self) -> None:
-        """Collect all project data from GitLab."""
+    def collect_project_data(self, use_parallel: Optional[bool] = None) -> None:
+        """Collect all project data from GitLab using parallel or sequential method."""
         if not self.client:
             raise ValueError("GitLab client is required for data collection")
 
+        # Override parallel setting if specified
+        if use_parallel is not None:
+            self.use_parallel_collection = use_parallel
+
         projects = self.client.get_projects()
 
-        for project in projects:
+        if not projects:
+            print("No projects found in GitLab instance")
+            return
+
+        if self.use_parallel_collection:
+            self._collect_project_data_parallel(projects)
+        else:
+            self._collect_project_data_sequential(projects)
+
+    def _collect_project_data_sequential(self, projects: List[Dict]) -> None:
+        """Original sequential collection method."""
+        print(f"📊 Collecting data for {len(projects)} projects sequentially...")
+
+        for i, project in enumerate(projects, 1):
+            print(f"Processing {i}/{len(projects)}: {project.get('name', 'Unknown')}")
             repo_stats = self._analyze_project(project)
             if repo_stats:
                 self.repositories.append(repo_stats)
+
+    def _collect_project_data_parallel(self, projects: List[Dict]) -> None:
+        """New parallel collection method using Producer-Consumer pattern."""
+        # Import here to avoid circular imports
+        from .parallel_collector import ParallelGitLabCollector
+
+        print(f"🚀 Using parallel collection with {self.max_workers} workers")
+
+        # Create parallel collector (speed modes removed)
+        parallel_collector = ParallelGitLabCollector(
+            gitlab_client=self.client,
+            max_workers=self.max_workers,
+            performance_tracker=self.performance_tracker,
+        )
+
+        # Set debug mode if needed
+        if hasattr(self, "debug_mode"):
+            parallel_collector.debug_mode = self.debug_mode
+
+        # Collect all repositories in parallel
+        collected_repositories = parallel_collector.collect_all_projects_parallel(
+            projects
+        )
+
+        # Store results
+        self.repositories = collected_repositories
+
+        # Print collection statistics
+        stats = parallel_collector.get_collection_statistics()
+        if stats["failed_collections"] > 0:
+            print(f"⚠️  {stats['failed_collections']} projects failed to collect")
+
+        print(
+            f"✅ Successfully collected {len(self.repositories)} repositories in {stats['elapsed_time_seconds']:.1f}s"
+        )
+        print(f"📈 Performance: {stats['projects_per_second']:.2f} projects/second")
 
     def _analyze_project(self, project: Dict) -> Optional[RepositoryStats]:
         """Analyze a single project."""
@@ -113,7 +175,9 @@ class GitLabAnalyzer:
             project_id = project["id"]
 
             # Get basic stats
-            size_mb = (project.get("statistics", {}).get("repository_size", 0) or 0) / (1024 * 1024)
+            size_mb = (project.get("statistics", {}).get("repository_size", 0) or 0) / (
+                1024 * 1024
+            )
 
             # Parse last activity with timezone handling
             if project.get("last_activity_at"):
@@ -150,14 +214,18 @@ class GitLabAnalyzer:
 
             # Get comprehensive storage statistics (GitLab 17.x+ approach)
             detailed_project = self.client.get_project_with_statistics(project_id)
-            storage_stats = detailed_project.get("statistics", {}) if detailed_project else {}
+            storage_stats = (
+                detailed_project.get("statistics", {}) if detailed_project else {}
+            )
 
             # Get packages and container registry
             packages = self.client.get_project_packages(project_id)
             container_repos = self.client.get_project_container_registry(project_id)
 
             # Get detailed artifacts and LFS information
-            job_artifacts_details = self.client.get_project_job_artifacts_list(project_id)
+            job_artifacts_details = self.client.get_project_job_artifacts_list(
+                project_id
+            )
             lfs_objects_details = self.client.get_project_lfs_objects(project_id)
 
             # Calculate storage sizes from comprehensive data
@@ -167,27 +235,41 @@ class GitLabAnalyzer:
 
             # Method 1: Use GitLab 17.x+ detailed statistics
             if storage_stats:
-                lfs_size_mb = (storage_stats.get("lfs_objects_size", 0) or 0) / (1024 * 1024)
-                artifacts_size_mb = (storage_stats.get("job_artifacts_size", 0) or 0) / (1024 * 1024)
+                lfs_size_mb = (storage_stats.get("lfs_objects_size", 0) or 0) / (
+                    1024 * 1024
+                )
+                artifacts_size_mb = (
+                    storage_stats.get("job_artifacts_size", 0) or 0
+                ) / (1024 * 1024)
                 # Add pipeline artifacts (new in GitLab 17.x)
-                pipeline_artifacts_mb = (storage_stats.get("pipeline_artifacts_size", 0) or 0) / (1024 * 1024)
+                pipeline_artifacts_mb = (
+                    storage_stats.get("pipeline_artifacts_size", 0) or 0
+                ) / (1024 * 1024)
                 artifacts_size_mb += pipeline_artifacts_mb
 
             # Method 2: Estimate from project data if API doesn't provide detailed stats
             # Use repository size and other indicators as fallback
             if lfs_size_mb == 0 and artifacts_size_mb == 0:
                 # Estimate based on repository characteristics
-                repo_size_mb = (project.get("statistics", {}).get("repository_size", 0) or 0) / (1024 * 1024)
+                repo_size_mb = (
+                    project.get("statistics", {}).get("repository_size", 0) or 0
+                ) / (1024 * 1024)
 
                 # Heuristic: If repo is large but has few commits, likely has binary/LFS content
                 if len(commits) > 0 and repo_size_mb > 50:
                     size_per_commit = repo_size_mb / len(commits)
-                    if size_per_commit > 1:  # More than 1MB per commit suggests binary content
-                        lfs_size_mb = repo_size_mb * 0.3  # Estimate 30% as potential LFS
+                    if (
+                        size_per_commit > 1
+                    ):  # More than 1MB per commit suggests binary content
+                        lfs_size_mb = (
+                            repo_size_mb * 0.3
+                        )  # Estimate 30% as potential LFS
 
                 # Estimate artifacts based on pipeline activity
                 if len(pipelines) > 10:  # Active CI/CD
-                    artifacts_size_mb = min(repo_size_mb * 0.2, 100)  # Estimate max 100MB artifacts
+                    artifacts_size_mb = min(
+                        repo_size_mb * 0.2, 100
+                    )  # Estimate max 100MB artifacts
 
             # Analyze job artifacts for cleanup recommendations
             expired_artifacts_count = 0
@@ -204,7 +286,9 @@ class GitLabAnalyzer:
                             created_date = created_date.replace(tzinfo=None)
 
                         age_days = (current_time - created_date).days
-                        artifact_size_mb = artifact.get("artifact_size", 0) / (1024 * 1024)
+                        artifact_size_mb = artifact.get("artifact_size", 0) / (
+                            1024 * 1024
+                        )
 
                         if age_days > 30:  # Artifacts older than 30 days
                             old_artifacts_size_mb += artifact_size_mb
@@ -213,28 +297,44 @@ class GitLabAnalyzer:
                         pass
 
             # Calculate package sizes
-            packages_size_mb = sum(pkg.get("size", 0) for pkg in packages) / (1024 * 1024)
+            packages_size_mb = sum(pkg.get("size", 0) for pkg in packages) / (
+                1024 * 1024
+            )
 
             # Calculate container registry size
             container_registry_size_mb = 0
             for repo in container_repos:
                 tags = self.client.get_registry_tags(project_id, repo["id"])
-                container_registry_size_mb += sum(tag.get("size", 0) for tag in tags) / (1024 * 1024)
+                container_registry_size_mb += sum(
+                    tag.get("size", 0) for tag in tags
+                ) / (1024 * 1024)
 
-            # Detect binary files (optional - can be slow)
-            binary_files = [] if self.skip_binary_scan else self._detect_binary_files(project_id)
+            # Detect binary files
+            binary_files = self._detect_binary_files(project_id)
 
             # Calculate advanced metrics
-            complexity_score = self._calculate_complexity_score(project, languages, commits, contributors)
-            health_score = self._calculate_health_score(project, merge_requests, issues, last_activity)
+            complexity_score = self._calculate_complexity_score(
+                project, languages, commits, contributors
+            )
+            health_score = self._calculate_health_score(
+                project, merge_requests, issues, last_activity
+            )
             fetch_activity = storage_stats.get("fetches", {})
             language_diversity = len(languages)
-            commit_frequency = self._calculate_commit_frequency(commits, project.get("created_at"))
-            hotness_score = self._calculate_hotness_score(fetch_activity, commits, last_activity)
-            maintenance_score = self._calculate_maintenance_score(project, last_activity, merge_requests, issues)
+            commit_frequency = self._calculate_commit_frequency(
+                commits, project.get("created_at")
+            )
+            hotness_score = self._calculate_hotness_score(
+                fetch_activity, commits, last_activity
+            )
+            maintenance_score = self._calculate_maintenance_score(
+                project, last_activity, merge_requests, issues
+            )
 
             # Get pipeline metrics
-            pipeline_success_rate, avg_duration = self._calculate_pipeline_metrics(pipelines)
+            pipeline_success_rate, avg_duration = self._calculate_pipeline_metrics(
+                pipelines
+            )
             pipeline_details = self._analyze_pipeline_details(project_id, pipelines)
 
             return RepositoryStats(
@@ -331,7 +431,11 @@ class GitLabAnalyzer:
             for item in tree:
                 if item["type"] == "blob":
                     file_path = item["path"]
-                    file_ext = "." + file_path.split(".")[-1].lower() if "." in file_path else ""
+                    file_ext = (
+                        "." + file_path.split(".")[-1].lower()
+                        if "." in file_path
+                        else ""
+                    )
 
                     # Check if it's a binary file and relatively large
                     if file_ext in binary_extensions:
@@ -341,7 +445,9 @@ class GitLabAnalyzer:
 
         return binary_files
 
-    def _calculate_complexity_score(self, project: Dict, languages: Dict, commits: List, contributors: List) -> float:
+    def _calculate_complexity_score(
+        self, project: Dict, languages: Dict, commits: List, contributors: List
+    ) -> float:
         """Calculate repository complexity score (0-100)."""
         try:
             score = 0.0
@@ -351,7 +457,9 @@ class GitLabAnalyzer:
             score += min(lang_count * 5, 25)
 
             # Size vs commits ratio (0-25 points)
-            size_mb = (project.get("statistics", {}).get("repository_size", 0) or 0) / (1024 * 1024)
+            size_mb = (project.get("statistics", {}).get("repository_size", 0) or 0) / (
+                1024 * 1024
+            )
             commit_count = len(commits)
             if commit_count > 0:
                 complexity_ratio = (size_mb / commit_count) * 10
@@ -407,7 +515,9 @@ class GitLabAnalyzer:
         except Exception:
             return 50.0
 
-    def _calculate_commit_frequency(self, commits: List, created_at: Optional[str]) -> float:
+    def _calculate_commit_frequency(
+        self, commits: List, created_at: Optional[str]
+    ) -> float:
         """Calculate commits per day since creation."""
         try:
             if not commits or not created_at:
@@ -422,7 +532,9 @@ class GitLabAnalyzer:
         except Exception:
             return 0.0
 
-    def _calculate_hotness_score(self, fetch_activity: Dict, commits: List, last_activity: datetime) -> float:
+    def _calculate_hotness_score(
+        self, fetch_activity: Dict, commits: List, last_activity: datetime
+    ) -> float:
         """Calculate repository hotness based on recent activity (0-100)."""
         try:
             score = 0.0
@@ -432,7 +544,10 @@ class GitLabAnalyzer:
                 recent_fetches = sum(
                     day["count"]
                     for day in fetch_activity["days"]
-                    if (datetime.now() - datetime.strptime(day["date"], "%Y-%m-%d")).days <= 30
+                    if (
+                        datetime.now() - datetime.strptime(day["date"], "%Y-%m-%d")
+                    ).days
+                    <= 30
                 )
                 score += min(recent_fetches / 10, 40)
 
@@ -526,7 +641,9 @@ class GitLabAnalyzer:
         except Exception:
             return 0.0, 0.0
 
-    def _analyze_pipeline_details(self, project_id: int, pipelines: List) -> Dict[str, Any]:
+    def _analyze_pipeline_details(
+        self, project_id: int, pipelines: List
+    ) -> Dict[str, Any]:
         """Analyze detailed pipeline information."""
         if not self.client or not pipelines:
             return {}
@@ -555,7 +672,9 @@ class GitLabAnalyzer:
                     jobs = self.client.get_pipeline_jobs(project_id, pipeline_id)
                     for job in jobs:
                         job_name = job.get("name", "unknown")
-                        runner_description = job.get("runner", {}).get("description", "unknown")
+                        runner_description = job.get("runner", {}).get(
+                            "description", "unknown"
+                        )
 
                         pipeline_details["job_types"][job_name] += 1
                         pipeline_details["runner_usage"][runner_description] += 1
@@ -608,7 +727,9 @@ class GitLabAnalyzer:
         total_lfs_gb = sum(r.lfs_size_mb for r in self.repositories) / 1024
         total_artifacts_gb = sum(r.artifacts_size_mb for r in self.repositories) / 1024
         total_packages_gb = sum(r.packages_size_mb for r in self.repositories) / 1024
-        total_container_gb = sum(r.container_registry_size_mb for r in self.repositories) / 1024
+        total_container_gb = (
+            sum(r.container_registry_size_mb for r in self.repositories) / 1024
+        )
 
         # Generate recommendations
         recommendations = self._generate_recommendations()
@@ -621,15 +742,25 @@ class GitLabAnalyzer:
                 activity_by_month[month_key] += repo.commit_count
 
         # Most active repositories
-        most_active = sorted(self.repositories, key=lambda r: r.commit_count, reverse=True)[:10]
+        most_active = sorted(
+            self.repositories, key=lambda r: r.commit_count, reverse=True
+        )[:10]
 
         # Largest repositories
-        largest_repos = sorted(self.repositories, key=lambda r: r.size_mb, reverse=True)[:10]
+        largest_repos = sorted(
+            self.repositories, key=lambda r: r.size_mb, reverse=True
+        )[:10]
 
         # New advanced rankings
-        most_complex = sorted(self.repositories, key=lambda r: r.complexity_score, reverse=True)[:10]
-        healthiest = sorted(self.repositories, key=lambda r: r.health_score, reverse=True)[:10]
-        hottest = sorted(self.repositories, key=lambda r: r.hotness_score, reverse=True)[:10]
+        most_complex = sorted(
+            self.repositories, key=lambda r: r.complexity_score, reverse=True
+        )[:10]
+        healthiest = sorted(
+            self.repositories, key=lambda r: r.health_score, reverse=True
+        )[:10]
+        hottest = sorted(
+            self.repositories, key=lambda r: r.hotness_score, reverse=True
+        )[:10]
 
         # Language distribution
         language_distribution = defaultdict(int)
@@ -648,14 +779,28 @@ class GitLabAnalyzer:
 
         # Average scores
         avg_complexity = (
-            sum(r.complexity_score for r in self.repositories) / len(self.repositories) if self.repositories else 0
+            sum(r.complexity_score for r in self.repositories) / len(self.repositories)
+            if self.repositories
+            else 0
         )
-        avg_health = sum(r.health_score for r in self.repositories) / len(self.repositories) if self.repositories else 0
+        avg_health = (
+            sum(r.health_score for r in self.repositories) / len(self.repositories)
+            if self.repositories
+            else 0
+        )
 
         # Pipeline success rate across all repos
-        total_success_rate = sum(r.pipeline_success_rate for r in self.repositories if r.pipeline_success_rate > 0)
-        repos_with_pipelines = sum(1 for r in self.repositories if r.pipeline_success_rate > 0)
-        avg_pipeline_success = total_success_rate / repos_with_pipelines if repos_with_pipelines > 0 else 0
+        total_success_rate = sum(
+            r.pipeline_success_rate
+            for r in self.repositories
+            if r.pipeline_success_rate > 0
+        )
+        repos_with_pipelines = sum(
+            1 for r in self.repositories if r.pipeline_success_rate > 0
+        )
+        avg_pipeline_success = (
+            total_success_rate / repos_with_pipelines if repos_with_pipelines > 0 else 0
+        )
 
         # Default branch statistics
         branch_stats = defaultdict(int)
@@ -664,7 +809,9 @@ class GitLabAnalyzer:
                 branch_stats[repo.default_branch] += 1
 
         # Get GitLab version info
-        gitlab_version = self.repositories[0].gitlab_version if self.repositories else "Unknown"
+        gitlab_version = (
+            self.repositories[0].gitlab_version if self.repositories else "Unknown"
+        )
 
         system_stats = SystemStats(
             total_repositories=len(self.repositories),
@@ -714,7 +861,11 @@ class GitLabAnalyzer:
             )
 
         # Check for large repositories without LFS
-        large_without_lfs = [r for r in self.repositories if r.size_mb > 100 and r.lfs_size_mb == 0 and r.binary_files]
+        large_without_lfs = [
+            r
+            for r in self.repositories
+            if r.size_mb > 100 and r.lfs_size_mb == 0 and r.binary_files
+        ]
         if large_without_lfs:
             recommendations.append(
                 f"Found {len(large_without_lfs)} large repositories that contain binary files but don't use Git LFS. "
@@ -731,7 +882,9 @@ class GitLabAnalyzer:
 
         # Check for old artifacts across all repositories
         total_old_artifacts_mb = sum(r.old_artifacts_size_mb for r in self.repositories)
-        total_expired_artifacts = sum(r.expired_artifacts_count for r in self.repositories)
+        total_expired_artifacts = sum(
+            r.expired_artifacts_count for r in self.repositories
+        )
 
         if total_old_artifacts_mb > 500:  # More than 500MB of old artifacts
             recommendations.append(
@@ -749,7 +902,9 @@ class GitLabAnalyzer:
                 )
 
         # Check for old container images
-        container_repos = [r for r in self.repositories if r.container_registry_size_mb > 500]
+        container_repos = [
+            r for r in self.repositories if r.container_registry_size_mb > 500
+        ]
         if container_repos:
             recommendations.append(
                 f"Found {len(container_repos)} repositories with more than 500MB of container images. "

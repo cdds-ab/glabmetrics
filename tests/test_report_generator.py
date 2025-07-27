@@ -1,6 +1,7 @@
 """Tests for HTML report generation."""
 
 from datetime import datetime
+
 from bs4 import BeautifulSoup
 
 from glabmetrics.report_generator import HTMLReportGenerator
@@ -53,7 +54,9 @@ class TestHTMLReportGenerator:
 
         # Should include Bootstrap CSS
         assert "bootstrap" in html_content.lower()
-        assert "cdn.jsdelivr.net" in html_content or "cdnjs.cloudflare.com" in html_content
+        assert (
+            "cdn.jsdelivr.net" in html_content or "cdnjs.cloudflare.com" in html_content
+        )
 
         # Should include Chart.js
         assert "chart.js" in html_content.lower()
@@ -77,8 +80,12 @@ class TestHTMLReportGenerator:
         """Test that user-provided content is properly escaped."""
         # Modify sample data to include potentially dangerous content
         malicious_repo = sample_analysis_results["repositories"][0]
-        malicious_repo.name = '<script>alert("xss")</script>'  # This field is not rendered in HTML
-        malicious_repo.path_with_namespace = 'group/<img src="x" onerror="alert(1)">'  # This is rendered
+        malicious_repo.name = (
+            '<script>alert("xss")</script>'  # This field is not rendered in HTML
+        )
+        malicious_repo.path_with_namespace = (
+            'group/<img src="x" onerror="alert(1)">'  # This is rendered
+        )
 
         generator = HTMLReportGenerator()
         html_content = generator.generate_report(sample_analysis_results)
@@ -88,7 +95,9 @@ class TestHTMLReportGenerator:
         assert 'onerror="alert(1)"' not in html_content
 
         # Should contain escaped versions of actually rendered content
-        assert "&lt;img" in html_content and "onerror=&#34;alert(1)&#34;" in html_content
+        assert (
+            "&lt;img" in html_content and "onerror=&#34;alert(1)&#34;" in html_content
+        )
 
     def test_html_handles_empty_data(self):
         """Test report generation with minimal/empty data."""
@@ -158,7 +167,9 @@ class TestHTMLReportGenerator:
 
         # Should contain collection timestamp
         collection_time = sample_analysis_results["collection_timestamp"]
-        assert collection_time in html_content or "2025" in html_content  # Should have some timestamp
+        assert (
+            collection_time in html_content or "2025" in html_content
+        )  # Should have some timestamp
 
     def test_gitlab_version_display(self, sample_analysis_results):
         """Test that GitLab version is displayed."""

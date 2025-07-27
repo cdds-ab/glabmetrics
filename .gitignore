@@ -101,6 +101,15 @@ Thumbs.db
 !docs/**/*.html
 *.log
 
+# Generated reports and data
+.generated/
+!.generated/*.json
+
+# Build and test outputs
+target/
+reports/
+logs/
+
 # Temporary files
 temp/
 tmp/

@@ -1,10 +1,11 @@
 """Security-focused tests for HTML report generation."""
 
 from datetime import datetime
+
 import pytest
 
-from glabmetrics.report_generator import HTMLReportGenerator
 from glabmetrics.analyzer import RepositoryStats, SystemStats
+from glabmetrics.report_generator import HTMLReportGenerator
 
 
 class TestXSSProtection:
@@ -28,7 +29,7 @@ class TestXSSProtection:
             commit_count=10,
             contributor_count=2,
             last_activity=datetime.now(),
-            is_orphaned=False
+            is_orphaned=False,
         )
 
         system_stats = SystemStats(
@@ -45,7 +46,7 @@ class TestXSSProtection:
             total_container_registry_size_gb=0.0,
             optimization_recommendations=[
                 'Consider <script>alert("rec_xss")</script> for cleanup'
-            ]
+            ],
         )
 
         analysis_results = {
@@ -63,26 +64,28 @@ class TestXSSProtection:
         dangerous_patterns = [
             '<script>alert("name_xss")</script>',
             '<img src="x" onerror="alert(\'path_xss\')"',
-            'onerror="alert(\'path_xss\')"',
+            "onerror=\"alert('path_xss')\"",
             '<script>alert("rec_xss")</script>',
-            'javascript:',
-            'vbscript:',
-            'data:text/html',
+            "javascript:",
+            "vbscript:",
+            "data:text/html",
             'onload="alert(',
             'onerror="alert(',
             'onmouseover="alert(',
-            'onclick="alert('
+            'onclick="alert(',
         ]
 
         for pattern in dangerous_patterns:
-            assert pattern not in html_content, f"Found dangerous unescaped pattern: {pattern}"
+            assert (
+                pattern not in html_content
+            ), f"Found dangerous unescaped pattern: {pattern}"
 
         # Test that content is properly escaped
         escaped_patterns = [
-            '&lt;img',  # <img should be escaped
-            'onerror=&#34;',  # quotes should be escaped
-            '&gt;',  # > should be escaped
-            '&lt;script&gt;'  # <script> should be escaped in recommendations
+            "&lt;img",  # <img should be escaped
+            "onerror=&#34;",  # quotes should be escaped
+            "&gt;",  # > should be escaped
+            "&lt;script&gt;",  # <script> should be escaped in recommendations
         ]
 
         escaped_found = any(pattern in html_content for pattern in escaped_patterns)
@@ -93,17 +96,18 @@ class TestXSSProtection:
         # Create data that could potentially end up in JSON
         repo = RepositoryStats(
             id=1,
-            name='normal-repo',
-            path_with_namespace='group/normal-repo',
+            name="normal-repo",
+            path_with_namespace="group/normal-repo",
             size_mb=100.0,
             commit_count=10,
             contributor_count=2,
             last_activity=datetime.now(),
             is_orphaned=False,
             languages={
-                "JavaScript": "50", "Python": "50",
-                "HTML</script><script>alert(1)</script>": 0
-            }
+                "JavaScript": "50",
+                "Python": "50",
+                "HTML</script><script>alert(1)</script>": 0,
+            },
         )
 
         system_stats = SystemStats(
@@ -117,7 +121,7 @@ class TestXSSProtection:
             total_lfs_size_gb=0.0,
             total_artifacts_size_gb=0.0,
             total_packages_size_gb=0.0,
-            total_container_registry_size_gb=0.0
+            total_container_registry_size_gb=0.0,
         )
 
         analysis_results = {
@@ -133,16 +137,16 @@ class TestXSSProtection:
 
         # Check that JSON strings don't contain unescaped dangerous content
         json_fields = [
-            'storage_breakdown_json',
-            'language_distribution_json',
-            'fetch_heatmap_json'
+            "storage_breakdown_json",
+            "language_distribution_json",
+            "fetch_heatmap_json",
         ]
 
         for field in json_fields:
-            json_content = template_data.get(field, '{}')
-            assert '<script>' not in json_content, f"Found unescaped script in {field}"
-            assert '</script>' not in json_content, f"Found unescaped script in {field}"
-            assert 'alert(' not in json_content, f"Found alert function in {field}"
+            json_content = template_data.get(field, "{}")
+            assert "<script>" not in json_content, f"Found unescaped script in {field}"
+            assert "</script>" not in json_content, f"Found unescaped script in {field}"
+            assert "alert(" not in json_content, f"Found alert function in {field}"
 
     def test_empty_data_security(self):
         """Test that empty/None data doesn't cause security issues."""
@@ -155,7 +159,9 @@ class TestXSSProtection:
         # Should generate error report safely
         assert "Analysis Error" in html_content
         # Exclude legitimate scripts
-        content_without_legit_scripts = html_content.replace('<script src=', '').replace('</script>', '')
+        content_without_legit_scripts = html_content.replace(
+            "<script src=", ""
+        ).replace("</script>", "")
         assert "<script>" not in content_without_legit_scripts
 
     def test_malicious_recommendations_escaping(self):
@@ -174,8 +180,8 @@ class TestXSSProtection:
             total_container_registry_size_gb=0.0,
             optimization_recommendations=[
                 'Clean up <script>alert("xss")</script> old artifacts',
-                'Consider migrating to <img src=x onerror="alert(1)"> Git LFS'
-            ]
+                'Consider migrating to <img src=x onerror="alert(1)"> Git LFS',
+            ],
         )
 
         analysis_results = {
@@ -190,7 +196,7 @@ class TestXSSProtection:
         html_content = generator.generate_report(analysis_results)
 
         # Recommendations should be escaped
-        assert '&lt;script&gt;alert(&#34;xss&#34;)&lt;/script&gt;' in html_content
+        assert "&lt;script&gt;alert(&#34;xss&#34;)&lt;/script&gt;" in html_content
         assert '<script>alert("xss")</script>' not in html_content
         assert 'onerror="alert(1)"' not in html_content
 
@@ -203,13 +209,13 @@ class TestDataValidation:
         # Test with minimal valid data
         repo = RepositoryStats(
             id=1,
-            name='test-repo',
-            path_with_namespace='group/test-repo',
+            name="test-repo",
+            path_with_namespace="group/test-repo",
             size_mb=100.0,
             commit_count=10,
             contributor_count=2,
             last_activity=datetime.now(),
-            is_orphaned=False
+            is_orphaned=False,
         )
 
         system_stats = SystemStats(
@@ -223,7 +229,7 @@ class TestDataValidation:
             total_lfs_size_gb=0.0,
             total_artifacts_size_gb=0.0,
             total_packages_size_gb=0.0,
-            total_container_registry_size_gb=0.0
+            total_container_registry_size_gb=0.0,
         )
 
         analysis_results = {
@@ -239,9 +245,16 @@ class TestDataValidation:
 
         # Check required fields exist
         required_fields = [
-            'system_stats', 'repositories', 'largest_repos', 'most_active_repos',
-            'storage_breakdown', 'storage_breakdown_json', 'language_distribution_json',
-            'fetch_heatmap_json', 'analysis_timestamp', 'gitlab_version'
+            "system_stats",
+            "repositories",
+            "largest_repos",
+            "most_active_repos",
+            "storage_breakdown",
+            "storage_breakdown_json",
+            "language_distribution_json",
+            "fetch_heatmap_json",
+            "analysis_timestamp",
+            "gitlab_version",
         ]
 
         for field in required_fields:
@@ -249,7 +262,12 @@ class TestDataValidation:
 
         # Check JSON fields are valid JSON strings
         import json
-        json_fields = ['storage_breakdown_json', 'language_distribution_json', 'fetch_heatmap_json']
+
+        json_fields = [
+            "storage_breakdown_json",
+            "language_distribution_json",
+            "fetch_heatmap_json",
+        ]
         for field in json_fields:
             try:
                 json.loads(template_data[field])
@@ -261,14 +279,14 @@ class TestDataValidation:
         # Test with extreme numeric values
         repo = RepositoryStats(
             id=1,
-            name='extreme-repo',
-            path_with_namespace='group/extreme-repo',
+            name="extreme-repo",
+            path_with_namespace="group/extreme-repo",
             size_mb=999.999,  # Large but reasonable number
             commit_count=0,  # Zero
             contributor_count=1,
             last_activity=datetime.now(),
             is_orphaned=False,
-            complexity_score=999.9  # Large but reasonable number
+            complexity_score=999.9,  # Large but reasonable number
         )
 
         system_stats = SystemStats(
@@ -282,7 +300,7 @@ class TestDataValidation:
             total_lfs_size_gb=0.0,
             total_artifacts_size_gb=0.0,
             total_packages_size_gb=0.0,
-            total_container_registry_size_gb=0.0
+            total_container_registry_size_gb=0.0,
         )
 
         analysis_results = {
@@ -298,10 +316,17 @@ class TestDataValidation:
 
         # Should handle numbers gracefully - look for numeric inf/nan patterns
         import re
-        numeric_inf_pattern = r'\b(inf|infinity)\b'
-        numeric_nan_pattern = r'\bnan\b'
 
-        assert not re.search(numeric_inf_pattern, html_content, re.IGNORECASE), "Found numeric infinity in HTML"
-        assert not re.search(numeric_nan_pattern, html_content, re.IGNORECASE), "Found numeric NaN in HTML"
+        numeric_inf_pattern = r"\b(inf|infinity)\b"
+        numeric_nan_pattern = r"\bnan\b"
+
+        assert not re.search(
+            numeric_inf_pattern, html_content, re.IGNORECASE
+        ), "Found numeric infinity in HTML"
+        assert not re.search(
+            numeric_nan_pattern, html_content, re.IGNORECASE
+        ), "Found numeric NaN in HTML"
         assert html_content  # Should generate valid HTML
-        assert "999.999" in html_content or "1000.0" in html_content  # Repository size should appear
+        assert (
+            "999.999" in html_content or "1000.0" in html_content
+        )  # Repository size should appear

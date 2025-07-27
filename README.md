@@ -13,25 +13,39 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?logo=github)](http://makeapullrequest.com)
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/cdds-ab/glabmetrics/graphs/commit-activity)
 
-A powerful CLI tool for comprehensive analysis of GitLab instances with detailed HTML reporting and optimization recommendations for DevOps consultants.
+A powerful CLI tool for comprehensive analysis of GitLab instances with detailed HTML reporting, enhanced KPI analysis, and actionable optimization recommendations for DevOps consultants and platform engineers.
 
 ## ✨ Features
 
 ### 📊 Comprehensive Analysis
-- **Repository Metrics**: Size, commits, contributors, activity
-- **Storage Breakdown**: LFS, artifacts, packages, container registry
+- **Repository Metrics**: Size, commits, contributors, activity, binary file detection
+- **Storage Breakdown**: LFS, artifacts, packages, container registry analysis
 - **Advanced Scoring**: Complexity, health, hotness, maintenance scores
 - **Pipeline Analysis**: Success rates, performance, runner usage
-- **Optimization Recommendations**: Concrete cleanup suggestions
+- **🎯 Critical Issues Detection**: Binary performance killers, repository sprawl, CI/CD gaps
+- **📋 Actionable Recommendations**: Concrete implementation steps with expected results
 
 ### 🚀 Performance & Caching
+- **Parallel Collection**: Multi-threaded data gathering (CPU count workers by default)
 - **Intelligent Caching**: JSON-based intermediate storage for fast re-analysis
-- **Performance Tracking**: Detailed API performance statistics
-- **Incremental Updates**: Fetch only new data with `--refresh-data`
+- **Smart Incremental Updates**: Default behavior - only fetch changed repositories
+- **Auto-Generated Paths**: Automatic file paths to `.generated/` directory
+- **Performance Tracking**: Detailed API performance statistics saved as separate JSON
+
+### 🎯 Enhanced KPI Analysis (NEW!)
+- **P1 - Issue KPI Analysis**: Issue backlog health, resolution times, workflow efficiency
+- **P2 - Code Review Quality**: MR lead times, approval bottlenecks, review patterns
+- **P3 - CI/CD Insights**: Runner usage, pipeline success rates, Jenkins webhook analysis
+- **P4 - Configuration Check**: GitLab-CI best practices, security scans, caching optimization
+- **P5 - Network Analysis**: Submodule dependency graphs, circular dependency detection
+- **P6 - Performance Guidelines**: Caching recommendations, large file optimization
+- **🚀 Parallel Processing**: All 6 analyses run simultaneously for 6x speed improvement
 
 ### 📱 Modern Reporting
-- **Bootstrap 5 HTML**: Responsive, professional reports
-- **Chart.js Visualizations**: Interactive charts and diagrams
+- **Tab-Based Dashboard**: Switchable overview, repository details, storage, and recommendations
+- **Bootstrap 5 HTML**: Responsive, professional reports with dark/light mode
+- **Chart.js Visualizations**: Interactive charts, graphs, and network diagrams
+- **Critical Issues Summary**: Top 3 issues displayed in console and dashboard
 - **GitLab Version Detection**: Optimized for GitLab 17.x+ features
 - **Export-Ready**: PDF-print optimized layouts
 
@@ -62,24 +76,33 @@ docker run --rm -v $(pwd):/reports ghcr.io/cdds-ab/glabmetrics:latest \
   https://gitlab.example.com your-admin-token \
   --output /reports/gitlab-analysis.html
 
-# With data persistence and advanced options
+# 🎯 Enhanced KPI Analysis (Default behavior!)
 docker run --rm \
   -v $(pwd)/data:/data \
   -v $(pwd)/reports:/reports \
   ghcr.io/cdds-ab/glabmetrics:latest \
   https://gitlab.example.com your-admin-token \
   --data-file /data/cache.json \
-  --output /reports/detailed-report.html \
+  --output /reports/enhanced-report.html \
   --verbose --refresh-data
 
-# 🛠️ Development (for developers only)
-pdm run glabmetrics https://gitlab.example.com your-admin-token \
-  --output report.html --refresh-data
+# 🚀 Smart incremental updates (Default behavior)
+docker run --rm \
+  -v $(pwd)/data:/data \
+  -v $(pwd)/reports:/reports \
+  ghcr.io/cdds-ab/glabmetrics:latest \
+  https://gitlab.example.com your-admin-token \
+  --data-file /data/cache.json \
+  --output /reports/updated-report.html
+
+# 🛠️ Development with PDM and auto-generated paths
+pdm run glabmetrics https://gitlab.example.com your-admin-token --verbose
+pdm run analyze https://gitlab.example.com your-admin-token --verbose
 ```
 
 ## 📖 Usage Guide
 
-### CLI Options
+### Simplified CLI Options
 
 ```
 Usage: glabmetrics [OPTIONS] GITLAB_URL ADMIN_TOKEN
@@ -89,12 +112,20 @@ Arguments:
   ADMIN_TOKEN  Admin access token for GitLab API
 
 Options:
-  -o, --output TEXT        Output HTML file path (default: gitlab_report.html)
-  -v, --verbose           Enable verbose output
-  -r, --refresh-data      Refresh data from GitLab API (use cached data otherwise)
-  -d, --data-file TEXT    Data file path (default: gitlab_data.json)
-  --skip-binary-scan     Skip binary file detection (faster collection)
-  --help                 Show this message and exit
+  -o, --output TEXT         Output HTML file path (default: auto-generated)
+  -d, --data-file TEXT      Data cache file path (default: auto-generated)
+  -v, --verbose            Enable verbose output with performance details
+  -r, --refresh-data       Force complete data refresh (conflicts with -i)
+  -i, --incremental        Force incremental update (conflicts with -r)
+  -w, --workers INTEGER    Number of parallel workers (default: CPU count)
+  --basic                  Disable Enhanced KPIs (basic analysis only)
+  --help                   Show this message and exit
+
+Default Behavior:
+  • Enhanced KPIs (P1-P6) enabled by default
+  • Intelligent incremental updates when cache exists
+  • Auto-generated paths to .generated/ directory
+  • Performance data saved as separate JSON file
 ```
 
 ### GitLab Token Setup
@@ -111,22 +142,33 @@ Options:
 
 ### Workflow Examples
 
-#### First Complete Analysis
+#### 🚀 First Complete Analysis
 ```bash
-# Complete data collection (may take hours)
-pdm run glabmetrics https://gitlab.example.com token --verbose --refresh-data
+# Complete Enhanced KPI analysis (default behavior)
+pdm run analyze https://gitlab.example.com token --refresh-data --verbose
 
-# Quick analysis without binary scan
-pdm run glabmetrics https://gitlab.example.com token --skip-binary-scan --refresh-data
+# Quick basic analysis (for testing)
+pdm run glabmetrics https://gitlab.example.com token --basic --refresh-data
 ```
 
-#### Regular Updates
+#### 📊 Enhanced KPI Analysis (Default!)
 ```bash
-# Use cached data for quick reports
-pdm run glabmetrics https://gitlab.example.com token --output weekly-report.html
+# Full P1-P6 analysis with auto-generated paths
+pdm run glabmetrics https://gitlab.example.com token --verbose
 
-# Update cache (recommended weekly)
-pdm run glabmetrics https://gitlab.example.com token --refresh-data
+# Custom output location
+pdm run analyze https://gitlab.example.com token \
+  --output custom-report.html --refresh-data
+```
+
+#### ⚡ Regular Updates
+```bash
+# Smart incremental update (default behavior)
+pdm run glabmetrics https://gitlab.example.com token
+
+# Force incremental update with custom output
+pdm run analyze https://gitlab.example.com token \
+  --incremental --output weekly-report.html
 ```
 
 ## 📊 Report Sections
@@ -147,7 +189,7 @@ pdm run glabmetrics https://gitlab.example.com token --refresh-data
 - **Hottest**: Recent activity, fetch patterns, contributor engagement
 - **Largest**: Storage consumption analysis
 
-### Pipeline Intelligence  
+### Pipeline Intelligence
 - Success rates across all repositories
 - Runner utilization patterns
 - Job failure analysis and recommendations
@@ -164,50 +206,82 @@ pdm run glabmetrics https://gitlab.example.com token --refresh-data
 
 ```bash
 # Clone repository
-git clone https://github.com/cdds-ab/glabmetrics-analyzer.git
-cd glabmetrics-analyzer
+git clone https://github.com/cdds-ab/glabmetrics.git
+cd glabmetrics
 
 # Install PDM
 curl -sSL https://pdm-project.org/install-pdm.py | python3 -
 
-# Install dependencies
+# Install dependencies & setup development environment
 pdm install -d
-
-# Setup pre-commit hooks
-pdm run pre-commit-install
+pdm run setup-dev           # One-time setup: clean + create target/ + install pre-commit hooks
 ```
 
 ### Development Commands
 
 ```bash
-# Run tests
-pdm run test                 # All tests
-pdm run test-cov            # With coverage report  
+# 🚀 Complete CI-like validation (recommended before commits)
+pdm run check               # format-check + lint + typecheck + security + test-cov
+pdm run check-fast          # format-check + lint + test-fast (for rapid iteration)
+
+# 🧪 Testing
+pdm run test                # All 77 tests
+pdm run test-cov            # With coverage report (outputs to target/coverage-html/)
 pdm run test-fast           # Fast tests (stop on first failure)
+pdm run test-verbose        # Verbose test output
 
-# Code quality
-pdm run lint                # Linting
-pdm run format              # Code formatting
-pdm run format-check        # Check formatting
+# 🔍 Code Quality
+pdm run lint                # flake8 linting (88-char line limit)
+pdm run format              # Black + isort formatting
+pdm run format-check        # Check formatting without changes
+pdm run typecheck           # mypy type checking
+pdm run security            # Bandit security scan (19 low-severity findings)
+pdm run security-report     # Security report to target/bandit-report.json
 
-# Semantic versioning
-pdm run commit              # Conventional commits
-pdm run bump                # Version bump
+# 🧹 Development Utilities
+pdm run clean               # Remove target/, .generated/, caches
+pdm run setup-dev           # Reset development environment
+
+# 📦 Release Management
+pdm run commit              # Conventional commits with commitizen
+pdm run bump                # Semantic version bump
 pdm run changelog           # Generate changelog
+
+# 🚀 Application Commands
+pdm run glabmetrics         # Run the CLI tool
+pdm run analyze             # Alias for glabmetrics
 ```
 
-### Testing
+### Pre-commit Hooks
+
+Pre-commit hooks automatically run on `git commit` and include:
+- Black code formatting (88 characters)
+- isort import sorting
+- flake8 linting
+- mypy type checking
+- Bandit security scanning
+- Trailing whitespace removal
+- YAML/TOML validation
+
+**Bypass hooks** (not recommended): `git commit --no-verify`
+
+### Line Length Configuration
+
+All tools use **88 characters** (Black/PSF standard) configured in **one place**:
+- Edit `pyproject.toml`: `line-length = 88`
+- All tools (Black, flake8, isort) automatically inherit this setting
+- **To change to 120 chars**: Only change the single line-length value in pyproject.toml
+
+### Testing & Coverage
 
 ```bash
-# Unit tests
+# Run specific test files
 pdm run test tests/test_analyzer.py
+pdm run test tests/test_security.py
 
-# Integration tests  
-pdm run test tests/integration/
-
-# With coverage
-pdm run test-cov
-open htmlcov/index.html
+# Coverage analysis
+pdm run test-cov                    # Run tests with coverage
+open target/coverage-html/index.html  # View HTML coverage report
 ```
 
 ### Architecture Overview
@@ -234,24 +308,24 @@ tests/
 #### API Rate Limiting
 ```bash
 # Symptom: "Too many requests" errors
-# Solution: Check GitLab rate limits and use caching
-pdm run glabmetrics url token --data-file cache.json  # Use cached data
+# Solution: Use cached data and reduce workers
+pdm run glabmetrics url token --workers 4  # Use cached data automatically
 ```
 
 #### Memory Issues (Large Instances)
 ```bash
 # Symptom: Out of memory during analysis
-# Solution: Skip binary scanning
-pdm run glabmetrics url token --skip-binary-scan
+# Solution: Use basic analysis mode
+pdm run glabmetrics url token --basic
 ```
 
 #### Slow Performance
 ```bash
-# Check performance stats
-pdm run glabmetrics url token --verbose --refresh-data
+# Check performance stats (automatically saved as separate JSON)
+pdm run analyze url token --verbose --refresh-data
 
-# Use incremental updates
-pdm run glabmetrics url token  # Uses cache automatically
+# Use incremental updates (default behavior)
+pdm run glabmetrics url token  # Smart incremental updates
 ```
 
 #### Token Permissions
