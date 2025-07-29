@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Optional
 
 from .dashboard.actionable_dashboard import ActionableDashboard
 from .dashboard.comprehensive_dashboard import ComprehensiveDashboard
-from .dashboard.performance_dashboard import PerformanceDashboard
 from .performance_analyzer import (
     PerformanceAnalyzer,
     create_performance_dashboard_content,
@@ -1706,12 +1705,12 @@ class EnhancedHTMLReportGenerator:
             <div class="alert alert-warning mb-4" role="alert">
                 <h4 class="alert-heading">🚨 Performance Crisis Detected!</h4>
                 <p class="mb-0">
-                    <strong>{summary['total_issues']} performance issues</strong> identified with 
-                    <strong>{summary['total_waste_gb']:.1f} GB storage waste</strong> and 
+                    <strong>{summary['total_issues']} performance issues</strong> identified with
+                    <strong>{summary['total_waste_gb']:.1f} GB storage waste</strong> and
                     <strong>{summary['optimization_potential_percent']:.0f}% optimization potential</strong>
                 </p>
             </div>
-            
+
             <div class="row mb-4">
                 <div class="col-lg-3 col-md-6">
                     <div class="card border-danger">
@@ -1746,7 +1745,7 @@ class EnhancedHTMLReportGenerator:
                     </div>
                 </div>
             </div>
-            
+
             <h3 class="mb-4">🔧 Performance Issues & Solutions</h3>
             {performance_content}
             """

@@ -92,9 +92,9 @@ bump = "cz bump"
 changelog = "cz changelog"
 pre-commit-install = "pre-commit install"
 
-# GitLab analysis commands
-glabmetrics = "python -m glabmetrics.main"
-analyze = "python -m glabmetrics.main"
+# GitLab analysis commands - Simple usage
+analyze = "python -m glabmetrics analyze"
+performance = "python -m glabmetrics performance"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

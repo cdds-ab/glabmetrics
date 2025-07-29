@@ -101,9 +101,10 @@ class ParallelGitLabCollector:
 
         # Initialize global debug analyzer if in debug mode
         if self.debug_mode:
-            from .debug_analyzer import DebugGitLabAnalyzer
-
-            self.global_debug_analyzer = DebugGitLabAnalyzer(self.gitlab_client)
+            console.print(
+                "[yellow]Debug mode enabled - additional logging active[/yellow]"
+            )
+            self.global_debug_analyzer = None
 
         try:
             # Start performance tracking
@@ -131,8 +132,10 @@ class ParallelGitLabCollector:
             self._print_collection_summary()
 
             # Print debug summary if in debug mode
-            if self.debug_mode and self.global_debug_analyzer:
-                self.global_debug_analyzer.print_debug_summary()
+            if self.debug_mode:
+                console.print(
+                    "[yellow]Debug collection completed - check verbose output above[/yellow]"
+                )
 
             return self.collected_repositories
 

@@ -3,7 +3,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from dateutil.parser import parse as parse_date
 
@@ -145,7 +145,7 @@ class ActionableDashboard:
                         "git commit -m 'Add Git LFS tracking for large files'",
                         "git push",
                     ],
-                    expected_result=f"Reduce repository sizes by 60-80%, improve clone performance",
+                    expected_result="Reduce repository sizes by 60-80%, improve clone performance",
                     deadline="1 month",
                 )
             )
@@ -197,7 +197,7 @@ class ActionableDashboard:
                     last_activity = last_activity.replace(tzinfo=None)
                 if last_activity < cutoff_date:
                     inactive_repos.append(repo)
-            except:
+            except Exception:
                 continue
 
         if inactive_repos:
@@ -314,12 +314,12 @@ class ActionableDashboard:
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="expected-result">
                         <i class="fas fa-bullseye me-2"></i>
                         <strong>Expected Result:</strong> {action.expected_result}
                     </div>
-                    
+
                     <details class="mt-3">
                         <summary class="btn btn-outline-primary btn-sm">
                             <i class="fas fa-terminal me-2"></i>Show Implementation Commands
@@ -328,7 +328,7 @@ class ActionableDashboard:
                             <pre><code>{commands_preview}</code></pre>
                         </div>
                     </details>
-                    
+
                     <div class="affected-repos mt-2">
                         <small class="text-muted">
                             <strong>Affected repositories:</strong> {", ".join(action.affected_repos[:5])}
@@ -343,11 +343,11 @@ class ActionableDashboard:
         <div class="alert alert-success mb-4" role="alert">
             <h4 class="alert-heading">🎯 Actionable GitLab Optimization Plan</h4>
             <p class="mb-0">
-                <strong>{len(actions)} concrete actions</strong> identified with 
+                <strong>{len(actions)} concrete actions</strong> identified with
                 <strong>{len(critical_actions)} critical</strong> and <strong>{len(high_actions)} high priority</strong> items
             </p>
         </div>
-        
+
         <div class="row mb-4">
             <div class="col-lg-4 col-md-6">
                 <div class="card border-danger">
@@ -377,13 +377,13 @@ class ActionableDashboard:
                 </div>
             </div>
         </div>
-        
+
         <h3 class="text-danger mb-3">🚨 CRITICAL ACTIONS (Fix Immediately)</h3>
         {generate_action_cards(critical_actions, 'critical')}
-        
+
         <h3 class="text-warning mb-3">⚠️ HIGH PRIORITY ACTIONS</h3>
         {generate_action_cards(high_actions, 'high')}
-        
+
         <h3 class="text-info mb-3">💡 MEDIUM PRIORITY ACTIONS</h3>
         {generate_action_cards(medium_actions, 'medium')}
         """

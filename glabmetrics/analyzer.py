@@ -102,6 +102,9 @@ class GitLabAnalyzer:
         self.performance_tracker = performance_tracker
         self.use_parallel_collection: bool = True  # Default to parallel collection
         self.max_workers: int = 20  # Default worker count
+        self.skip_binary_detection: bool = (
+            False  # Skip binary detection for performance
+        )
 
     def collect_project_data(self, use_parallel: Optional[bool] = None) -> None:
         """Collect all project data from GitLab using parallel or sequential method."""
@@ -379,9 +382,29 @@ class GitLabAnalyzer:
             return None
 
     def _detect_binary_files(self, project_id: int) -> List[str]:
-        """Detect large binary files not in LFS."""
+        """Detect large binary files not in LFS with performance optimizations."""
         if not self.client:
             return []  # Cannot detect without client
+
+        # Skip binary detection if disabled for performance
+        if self.skip_binary_detection:
+            return []
+
+        # Skip binary detection for obviously problematic repos based on size
+        try:
+            project_details = self.client._make_single_request(f"projects/{project_id}")
+            repo_size_mb = (
+                project_details.get("statistics", {}).get("repository_size", 0) or 0
+            ) / (1024 * 1024)
+
+            # Skip binary detection for repos >2GB to prevent timeouts
+            if repo_size_mb > 2000:
+                print(
+                    f"⚠️  Skipping binary detection for large repository ({repo_size_mb:.0f}MB) to prevent timeout"
+                )
+                return ["<large_repo_binary_detection_skipped>"]
+        except Exception:
+            pass
 
         binary_extensions = {
             ".exe",
@@ -427,20 +450,50 @@ class GitLabAnalyzer:
 
         binary_files = []
         try:
-            tree = self.client.get_project_repository_tree(project_id)
+            # Use optimized tree retrieval with limits
+            tree = self.client.get_project_repository_tree(project_id, max_items=5000)
+
+            # Skip common directories that are unlikely to contain relevant binaries
+            skip_paths = {
+                "node_modules",
+                ".git",
+                "build",
+                "dist",
+                "target",
+                ".gradle",
+                ".mvn",
+                "vendor",
+                ".venv",
+                "venv",
+                "__pycache__",
+                ".cache",
+            }
+
             for item in tree:
                 if item["type"] == "blob":
                     file_path = item["path"]
+
+                    # Skip files in irrelevant directories for performance
+                    if any(skip_dir in file_path for skip_dir in skip_paths):
+                        continue
+
                     file_ext = (
                         "." + file_path.split(".")[-1].lower()
                         if "." in file_path
                         else ""
                     )
 
-                    # Check if it's a binary file and relatively large
+                    # Check if it's a binary file and add size check if available
                     if file_ext in binary_extensions:
-                        binary_files.append(file_path)
-        except Exception:
+                        # Only flag significant binary files (if size info available)
+                        file_size = item.get("size", 0)
+                        if (
+                            file_size == 0 or file_size > 1024 * 1024
+                        ):  # >1MB or unknown size
+                            binary_files.append(file_path)
+
+        except Exception as e:
+            print(f"⚠️  Binary detection failed for project {project_id}: {e}")
             pass
 
         return binary_files

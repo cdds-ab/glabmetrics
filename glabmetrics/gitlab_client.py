@@ -389,13 +389,17 @@ class GitLabClient:
         return self._make_single_request("application/statistics")
 
     def get_project_repository_tree(
-        self, project_id: int, path: str = "", ref: Optional[str] = None
+        self,
+        project_id: int,
+        path: str = "",
+        ref: Optional[str] = None,
+        max_items: int = 10000,
     ) -> List[Dict]:
-        """Get repository file tree."""
+        """Get repository file tree with performance optimizations."""
         if self.performance_tracker:
             self.performance_tracker.start_api_block("Binary File Detection")
 
-        params = {"path": path, "recursive": "true"}
+        params = {"path": path, "recursive": "true", "per_page": "100"}
 
         # Try to get default branch if no ref specified
         if not ref:
@@ -423,7 +427,26 @@ class GitLabClient:
         if ref:
             params["ref"] = ref
 
-        result = self._make_request(f"projects/{project_id}/repository/tree", params)
+        # Use paginated request with early termination for large repos
+        try:
+            result = self._make_request(
+                f"projects/{project_id}/repository/tree", params
+            )
+
+            # For very large repos, limit the number of items to prevent timeouts
+            if len(result) > max_items:
+                print(
+                    f"⚠️  Large repository detected ({len(result)} files), limiting to {max_items} items for performance"
+                )
+                result = result[:max_items]
+
+        except Exception:
+            # Fallback: try non-recursive approach for massive repos
+            print("⚠️  Repository tree too large, falling back to non-recursive scan")
+            params["recursive"] = "false"
+            result = self._make_request(
+                f"projects/{project_id}/repository/tree", params
+            )
 
         if self.performance_tracker:
             self.performance_tracker.end_api_block("Binary File Detection", len(result))

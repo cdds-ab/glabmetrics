@@ -1324,15 +1324,15 @@ def performance(data_file, output):
             </h1>
             <p class="lead text-muted">Critical Performance Issues Detected - Immediate Action Required</p>
         </div>
-        
+
         <div class="alert alert-danger mb-4" role="alert">
             <h4 class="alert-heading">⚠️ SYSTEM PERFORMANCE EMERGENCY</h4>
             <p class="mb-0">
-                <strong>{summary['total_issues']} performance issues</strong> found with 
+                <strong>{summary['total_issues']} performance issues</strong> found with
                 <strong>{summary['total_waste_gb']:.1f} GB storage waste</strong> causing severe GitLab slowdowns!
             </p>
         </div>
-        
+
         <div class="row mb-4">
             <div class="col-lg-3 col-md-6">
                 <div class="metric-card" style="background: linear-gradient(135deg, #ff416c, #ff4b2b);">
@@ -1379,7 +1379,7 @@ def performance(data_file, output):
                 </div>
             </div>
         </div>
-        
+
         <h2 class="mb-4">🔧 IMMEDIATE ACTIONS REQUIRED</h2>
         {create_performance_dashboard_content(performance_report)}
     </div>
@@ -1404,7 +1404,7 @@ def performance(data_file, output):
         )
 
         if summary["critical_issues"] > 0:
-            console.print(f"\n[red]TOP CRITICAL ISSUE:[/red]")
+            console.print("\n[red]TOP CRITICAL ISSUE:[/red]")
             top_issue = sorted_issues[0]
             console.print(f"📛 {top_issue.repository}: {top_issue.impact_description}")
             console.print(f"💾 Potential savings: {top_issue.cost_impact_gb:.1f} GB")

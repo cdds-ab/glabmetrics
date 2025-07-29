@@ -21,10 +21,16 @@ tests/
 ├── test_gitlab_client.py    # GitLab API client tests
 ├── test_analyzer.py         # Analysis logic tests
 ├── test_data_storage.py     # Caching and serialization tests
-├── test_report_generator.py # HTML report generation tests
 └── integration/
     └── test_end_to_end.py   # Full workflow integration tests
 ```
+
+### ✅ Aktueller Test Status (2025-07-28)
+- **GitLab Client**: ✅ Vollständig getestet
+- **Analyzer**: ✅ Core-Funktionen getestet
+- **Data Storage**: ✅ Caching und Serialization getestet
+- **Enhanced Report Generator**: ✅ Integriert in main.py
+- **Enhanced KPI Analyzers**: ⚠️ Benötigen spezifische Tests
 
 ## Test Categories
 
@@ -62,7 +68,7 @@ tests/
 
 #### Scoring Algorithms
 - ✅ Complexity score calculation
-- ✅ Health score calculation  
+- ✅ Health score calculation
 - ✅ Hotness score calculation
 - ✅ Overall repository ranking
 
@@ -98,21 +104,22 @@ tests/
 - ✅ File locking for concurrent access
 - ✅ Backup and recovery mechanisms
 
-### 4. Report Generator Tests (`test_report_generator.py`)
+### 4. Enhanced KPI Analyzer Tests (Neue Priorität)
 
-**Coverage Target: 80%+**
+**Coverage Target: 85%+**
 
-#### HTML Generation
-- ✅ Template rendering
-- ✅ Data table generation
-- ✅ Chart data preparation
-- ✅ Responsive design elements
+#### P1-P6 Analyzer Tests
+- ⚠️ **Enhanced Issue Analyzer**: Parallel processing, KPI calculation
+- ⚠️ **Enhanced MR Analyzer**: Code review metrics, merge patterns
+- ⚠️ **Enhanced CI Analyzer**: Runner usage, pipeline efficiency
+- ⚠️ **Enhanced CI Config**: Configuration validation, best practices
+- ⚠️ **Enhanced Submodule**: Dependency analysis, network graphs
+- ⚠️ **Enhanced Performance**: Storage optimization, binary detection
 
-#### Content Validation
-- ✅ Statistical accuracy
-- ✅ Sorting and ranking correctness
-- ✅ Performance metrics display
-- ✅ Error handling in templates
+#### Dashboard Integration Tests
+- ⚠️ **Actionable Dashboard**: Critical issues generation
+- ⚠️ **Performance Dashboard**: Optimization recommendations
+- ⚠️ **Comprehensive Dashboard**: Multi-tab functionality
 
 ## Test Execution Strategy
 
@@ -139,7 +146,7 @@ pdm run test-fast
 
 ### Coverage Analysis
 ```bash
-# Generate HTML coverage report  
+# Generate HTML coverage report
 pdm run test-cov
 open htmlcov/index.html
 ```
@@ -211,7 +218,7 @@ docker run --rm glabmetrics:test --help
 - name: Run tests with coverage
   run: |
     pdm run test-cov
-    
+
 - name: Upload coverage to Codecov
   uses: codecov/codecov-action@v3
   with:

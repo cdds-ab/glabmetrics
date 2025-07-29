@@ -132,6 +132,13 @@ class EnhancedIssueAnalyzer:
 
                 # Collect results as they complete
                 for future in concurrent.futures.as_completed(future_to_project):
+                    # Import and check for shutdown request
+                    from .main import shutdown_handler
+
+                    if shutdown_handler.is_shutdown_requested():
+                        print("⚠️  Shutdown requested during issue analysis")
+                        return issue_metrics  # Return partial results
+
                     project = future_to_project[future]
                     try:
                         metrics = future.result()
@@ -151,6 +158,11 @@ class EnhancedIssueAnalyzer:
                         print(
                             f"    ⚠️ Error analyzing {project.get('name', 'Unknown')}: {e}"
                         )
+                        # Add detailed logging for debugging
+                        import traceback
+
+                        print(f"    Stack trace: {traceback.format_exc()}")
+
                         # Still update progress for failed projects
                         with self._lock:
                             self._processed_count += 1
@@ -179,6 +191,10 @@ class EnhancedIssueAnalyzer:
             open_issues = self.client.get_project_issues(
                 project_id, state="opened", per_page=100
             )
+
+            # Debug: Print issue collection progress
+            if hasattr(self, "_debug_enabled"):
+                print(f"    Found {len(open_issues)} open issues for {project_name}")
 
             # Sort by created_at (oldest first)
             open_issues.sort(key=lambda x: x.get("created_at", ""))
@@ -258,6 +274,9 @@ class EnhancedIssueAnalyzer:
 
         except Exception as e:
             print(f"    Error fetching issues for {project_name}: {e}")
+            import traceback
+
+            print(f"    Detailed error: {traceback.format_exc()}")
             return metrics  # Return metrics with basic info even if API calls fail
 
     def generate_issue_kpi_analysis(
@@ -271,7 +290,21 @@ class EnhancedIssueAnalyzer:
         - issue_age_90th_percentile
         """
         if not issue_metrics:
-            return {"error": "No issue metrics available"}
+            return IssueSystemAnalysis(
+                total_projects=0,
+                total_open_issues=0,
+                avg_issues_per_repo=0.0,
+                system_avg_age_days=0.0,
+                system_90th_percentile_days=0.0,
+                red_projects_count=0,
+                yellow_projects_count=0,
+                green_projects_count=0,
+                health_percentage=100.0,  # No projects = 100% healthy by default
+                critical_age_projects=[],
+                high_volume_projects=[],
+                oldest_issues_system_wide=[],
+                analysis_timestamp=datetime.now(),
+            )
 
         # System-wide statistics
         total_open_issues = sum(m.open_issues_count for m in issue_metrics)

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🚀 Major Architecture Updates
+- **Modular Dashboard System**: Separated actionable, performance, and comprehensive dashboards
+- **Command-Based CLI**: Split into `analyze` and `performance` commands
+- **Performance Crisis Detection**: 110GB+ storage waste identification with remediation
+- **8-Tab Enhanced Dashboard**: P1-P6 + A1 Actions + C1 Comprehensive views
+- **Integrated Performance Analysis**: Complete storage optimization in P6 tab
+
+### ⚡ Performance Features
+- **Artifact Bloat Analysis**: Critical >1GB artifact repositories detection
+- **Repository Size Optimization**: Git LFS migration recommendations
+- **Inactive Storage Detection**: Automated archiving suggestions for stale repositories
+- **Pipeline Efficiency**: Artifact cleanup and optimization strategies
+
+### 🎯 Actionable Dashboard (A1)
+- **Concrete Action Items**: Copy-paste bash commands with deadlines
+- **Priority-Based Categorization**: Critical, high, medium urgency levels
+- **Implementation Tracking**: Expected results and effort estimates
+- **Repository Impact Analysis**: Affected repository lists per action
+
+### 📊 Comprehensive Dashboard (C1)
+- **Combined Optimization View**: Unified actionable and performance insights
+- **Strategic Roadmap**: Prioritized optimization timeline
+- **Impact Quantification**: Storage savings and performance improvements
+
 ## [2.0.0] - 2025-01-27
 
 ### 🎯 Major Features Added

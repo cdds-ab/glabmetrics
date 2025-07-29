@@ -70,12 +70,12 @@ class ComprehensiveDashboard:
         <div class="alert alert-primary mb-4" role="alert">
             <h4 class="alert-heading">📊 Comprehensive GitLab Optimization Dashboard</h4>
             <p class="mb-0">
-                Complete analysis with <strong>{summary['total_action_items']} actionable items</strong> and 
+                Complete analysis with <strong>{summary['total_action_items']} actionable items</strong> and
                 <strong>{summary['performance_issues']} performance issues</strong> detected.
                 Potential storage savings: <strong>{summary['total_storage_waste_gb']:.1f} GB</strong>
             </p>
         </div>
-        
+
         <div class="row mb-4">
             <div class="col-lg-2 col-md-4 col-sm-6">
                 <div class="card border-danger">
@@ -118,23 +118,23 @@ class ComprehensiveDashboard:
                 </div>
             </div>
         </div>
-        
+
         <!-- Nav tabs -->
         <ul class="nav nav-tabs mb-4" id="comprehensiveTab" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="actionable-tab" data-bs-toggle="tab" 
+                <button class="nav-link active" id="actionable-tab" data-bs-toggle="tab"
                         data-bs-target="#actionable" type="button" role="tab">
                     🎯 Actionable Items
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="performance-tab" data-bs-toggle="tab" 
+                <button class="nav-link" id="performance-tab" data-bs-toggle="tab"
                         data-bs-target="#performance" type="button" role="tab">
                     ⚡ Performance Issues
                 </button>
             </li>
         </ul>
-        
+
         <!-- Tab content -->
         <div class="tab-content" id="comprehensiveTabContent">
             <div class="tab-pane fade show active" id="actionable" role="tabpanel">
@@ -144,8 +144,8 @@ class ComprehensiveDashboard:
                 <div class="alert alert-warning mb-4" role="alert">
                     <h4 class="alert-heading">🚨 Performance Crisis Detected!</h4>
                     <p class="mb-0">
-                        <strong>{performance_report['summary']['total_issues']} performance issues</strong> identified with 
-                        <strong>{performance_report['summary']['total_waste_gb']:.1f} GB storage waste</strong> and 
+                        <strong>{performance_report['summary']['total_issues']} performance issues</strong> identified with
+                        <strong>{performance_report['summary']['total_waste_gb']:.1f} GB storage waste</strong> and
                         <strong>{performance_report['summary']['optimization_potential_percent']:.0f}% optimization potential</strong>
                     </p>
                 </div>

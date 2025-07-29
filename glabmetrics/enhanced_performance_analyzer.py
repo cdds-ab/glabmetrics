@@ -95,13 +95,16 @@ class EnhancedPerformanceAnalyzer:
         self._processed_count = 0
         metrics = []
 
+        # Import graceful shutdown handler
+        from .main import shutdown_handler
+
         # Use progress bar for better UX
         with Progress() as progress:
             task = progress.add_task(
                 "[cyan]Processing projects...", total=len(projects)
             )
 
-            # Process projects in parallel
+            # Process projects in parallel with shutdown detection
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=self.max_workers
             ) as executor:
@@ -113,6 +116,13 @@ class EnhancedPerformanceAnalyzer:
 
                 # Collect results as they complete
                 for future in concurrent.futures.as_completed(future_to_project):
+                    # Check for shutdown request
+                    if shutdown_handler.is_shutdown_requested():
+                        console.print(
+                            "[yellow]⚠️  Shutdown requested during performance analysis[/yellow]"
+                        )
+                        return metrics  # Return partial results
+
                     project = future_to_project[future]
                     try:
                         metric = future.result()
@@ -192,7 +202,33 @@ class EnhancedPerformanceAnalyzer:
             logger.error(
                 f"Error analyzing performance for {project['path_with_namespace']}: {e}"
             )
-            return None
+            # Return basic metrics instead of None to maintain project count
+            return PerformanceMetrics(
+                id=project.get("id", 0),
+                path_with_namespace=project.get("path_with_namespace", "unknown"),
+                avg_pipeline_duration=0.0,
+                cache_usage={"enabled": False, "types": [], "efficiency": "unknown"},
+                dockerfile_optimizations=[],
+                repository_size_mb=project.get("statistics", {}).get(
+                    "repository_size", 0
+                )
+                / (1024 * 1024),
+                lfs_usage={"enabled": False, "size_mb": 0.0, "efficiency": "good"},
+                large_files=[],
+                dependency_caching={
+                    "npm": False,
+                    "pip": False,
+                    "maven": False,
+                    "gradle": False,
+                },
+                build_tool_configs=[],
+                performance_score=50.0,  # Neutral score for failed analysis
+                performance_issues=[
+                    "Analysis failed - unable to collect detailed metrics"
+                ],
+                performance_recommendations=["Retry analysis with better connectivity"],
+                gitlab_url=self.client.gitlab_url,
+            )
 
     def _analyze_ci_performance(self, project_id: int) -> Dict[str, Any]:
         """Analyze CI pipeline performance and caching."""

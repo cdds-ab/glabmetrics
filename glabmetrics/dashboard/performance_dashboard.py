@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Performance dashboard for GitLab optimization."""
 
-import statistics
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
@@ -163,11 +162,11 @@ class PerformanceDashboard:
                                 f"tar -czf {repo['name']}_backup_$(date +%Y%m%d).tar.gz {repo['name']}.git",
                                 "",
                                 "# 2. Archive via GitLab API",
-                                f"curl --request POST --header 'PRIVATE-TOKEN: $GITLAB_TOKEN' \\",
+                                "curl --request POST --header 'PRIVATE-TOKEN: $GITLAB_TOKEN' \\",
                                 f"     'https://gitlab.example.com/api/v4/projects/{repo['id']}/archive'",
                                 "",
                                 "# 3. Or move to archive group",
-                                f"curl --request PUT --header 'PRIVATE-TOKEN: $GITLAB_TOKEN' \\",
+                                "curl --request PUT --header 'PRIVATE-TOKEN: $GITLAB_TOKEN' \\",
                                 f"     --data 'path={repo['name']}&namespace_id=ARCHIVE_GROUP_ID' \\",
                                 f"     'https://gitlab.example.com/api/v4/projects/{repo['id']}'",
                                 "",
@@ -177,7 +176,7 @@ class PerformanceDashboard:
                             urgency_days=60,
                         )
                     )
-            except:
+            except Exception:
                 continue
 
         return issues
@@ -210,9 +209,9 @@ class PerformanceDashboard:
                             "# Project has high pipeline frequency with large artifacts",
                             "",
                             "# 1. Analyze current artifact patterns",
-                            f"curl --header 'PRIVATE-TOKEN: $GITLAB_TOKEN' \\",
+                            "curl --header 'PRIVATE-TOKEN: $GITLAB_TOKEN' \\",
                             f"     'https://gitlab.example.com/api/v4/projects/{repo['id']}/jobs?scope[]=success&per_page=10' \\",
-                            f"     | jq '.[] | {{id, artifacts_file, name}}'",
+                            "     | jq '.[] | {{id, artifacts_file, name}}'",
                             "",
                             "# 2. Update .gitlab-ci.yml with smart artifact handling",
                             "artifacts:",
@@ -329,12 +328,12 @@ class PerformanceDashboard:
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="expected-result">
                     <i class="fas fa-piggy-bank me-2"></i>
                     <strong>Storage Savings:</strong> {issue.cost_impact_gb:.1f} GB potential reduction
                 </div>
-                
+
                 <details class="mt-3">
                     <summary class="btn btn-outline-primary btn-sm">
                         <i class="fas fa-terminal me-2"></i>Show Remediation Commands

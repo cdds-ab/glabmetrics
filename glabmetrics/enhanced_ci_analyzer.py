@@ -247,9 +247,19 @@ class EnhancedCIAnalyzer:
 
         # System-wide calculations
         total_pipelines = sum(m.total_pipelines_30d for m in ci_metrics)
-        projects_with_ci = len([m for m in ci_metrics if m.total_pipelines_30d > 0])
+        _ = len([m for m in ci_metrics if m.total_pipelines_30d > 0])
         projects_with_webhooks = len([m for m in ci_metrics if m.webhook_configured])
         projects_with_jenkins = len([m for m in ci_metrics if m.jenkins_integration])
+
+        # Projects with ANY form of CI (GitLab + Jenkins)
+        projects_with_any_ci = len(
+            [
+                m
+                for m in ci_metrics
+                if m.total_pipelines_30d > 0 or m.jenkins_integration
+            ]
+        )
+        projects_with_ci = projects_with_any_ci  # Use comprehensive count
 
         # Success rate calculation (weighted by pipeline count)
         total_successful = sum(m.successful_pipelines for m in ci_metrics)
@@ -375,9 +385,18 @@ class EnhancedCIAnalyzer:
         # System Overview
         report.append("### System Overview")
         report.append(f"- **Total Projects:** {analysis.total_projects}")
+        gitlab_ci_count = (
+            len([m for m in ci_metrics if m.total_pipelines_30d > 0])
+            if hasattr(self, "ci_metrics")
+            else 0
+        )
+        jenkins_count = analysis.projects_with_jenkins
+
         report.append(
             f"- **Projects with CI:** {analysis.projects_with_ci} ({(analysis.projects_with_ci/analysis.total_projects*100):.1f}%)"
         )
+        report.append(f"  - GitLab CI: {gitlab_ci_count} projects")
+        report.append(f"  - Jenkins Integration: {jenkins_count} projects")
         report.append(f"- **Total Pipelines (30d):** {analysis.total_pipelines_30d}")
         report.append(f"- **System Success Rate:** {analysis.system_success_rate:.1f}%")
         report.append(
