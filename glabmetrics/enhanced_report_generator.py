@@ -5,6 +5,22 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from .dashboard.actionable_dashboard import ActionableDashboard
+from .dashboard.comprehensive_dashboard import ComprehensiveDashboard
+from .dashboard.performance_dashboard import PerformanceDashboard
+from .performance_analyzer import (
+    PerformanceAnalyzer,
+    create_performance_dashboard_content,
+)
+
+
+def get_attr_safe(obj, attr_name, default=None):
+    """Safely get attribute from object or dict."""
+    if isinstance(obj, dict):
+        return obj.get(attr_name, default)
+    else:
+        return getattr(obj, attr_name, default)
+
 
 @dataclass
 class CriticalIssue:
@@ -37,6 +53,13 @@ class EnhancedHTMLReportGenerator:
     def __init__(self, gitlab_url: str = ""):
         self.gitlab_url = gitlab_url
 
+    def _safe_get(self, data, key, default=0):
+        """Safely get value from dict or object attribute."""
+        if isinstance(data, dict):
+            return data.get(key, default)
+        else:
+            return getattr(data, key, default)
+
     def _analyze_critical_issues(
         self, repositories: List[Any], enhanced_analysis: Dict[str, Any]
     ) -> List[CriticalIssue]:
@@ -47,7 +70,7 @@ class EnhancedHTMLReportGenerator:
         issue_analysis = enhanced_analysis.get("issue_analysis", {})
         if (
             hasattr(issue_analysis, "red_projects_count")
-            and issue_analysis.red_projects_count > 0
+            and get_attr_safe(issue_analysis, "red_projects_count", 0) > 0
         ):
             issue_metrics = enhanced_analysis.get("issue_metrics", [])
             critical_repos = [
@@ -58,7 +81,7 @@ class EnhancedHTMLReportGenerator:
             issues.append(
                 CriticalIssue(
                     title="🚨 Critical Issue Backlog Crisis",
-                    description=f"CRITICAL: {issue_analysis.red_projects_count} repositories have issue backlogs >30 days blocking development",
+                    description=f"CRITICAL: {get_attr_safe(issue_analysis, 'red_projects_count', 0)} repositories have issue backlogs >30 days blocking development",
                     severity="critical",
                     affected_repos=critical_repos,
                     recommendation=f"# WEEK 1: Emergency issue triage\n"
@@ -72,12 +95,12 @@ class EnhancedHTMLReportGenerator:
 
         # P2: MR Analysis - Long Lead Times
         mr_analysis = enhanced_analysis.get("mr_analysis", {})
-        if (
-            hasattr(mr_analysis, "flagged_repositories")
-            and mr_analysis.flagged_repositories
+        if hasattr(mr_analysis, "flagged_repositories") and get_attr_safe(
+            mr_analysis, "flagged_repositories", []
         ):
             flagged_repos = [
-                repo["repository"] for repo in mr_analysis.flagged_repositories
+                repo["repository"]
+                for repo in get_attr_safe(mr_analysis, "flagged_repositories", [])
             ]
             issues.append(
                 CriticalIssue(
@@ -98,20 +121,21 @@ class EnhancedHTMLReportGenerator:
         ci_analysis = enhanced_analysis.get("ci_analysis", {})
         if (
             hasattr(ci_analysis, "system_success_rate")
-            and ci_analysis.system_success_rate < 85
+            and get_attr_safe(ci_analysis, "system_success_rate", 100) < 85
         ):
             problematic_repos = []
             if hasattr(ci_analysis, "problematic_projects"):
                 problematic_repos = [
-                    p["repository"] for p in ci_analysis.problematic_projects
+                    p["repository"]
+                    for p in get_attr_safe(ci_analysis, "problematic_projects", [])
                 ]
             issues.append(
                 CriticalIssue(
                     title="🔧 CI/CD Pipeline Failures",
-                    description=f"CRITICAL: System CI success rate {ci_analysis.system_success_rate:.1f}% indicates broken deployment process",
+                    description=f"CRITICAL: System CI success rate {get_attr_safe(ci_analysis, 'system_success_rate', 100):.1f}% indicates broken deployment process",
                     severity=(
                         "critical"
-                        if ci_analysis.system_success_rate < 70
+                        if get_attr_safe(ci_analysis, "system_success_rate", 100) < 70
                         else "warning"
                     ),
                     affected_repos=problematic_repos,
@@ -120,19 +144,28 @@ class EnhancedHTMLReportGenerator:
                     "# Add pipeline debugging: CI_DEBUG_TRACE=true\n"
                     "# Expected result: >90% success rate",
                     source="P3: CI/CD",
-                    priority=1 if ci_analysis.system_success_rate < 70 else 3,
+                    priority=(
+                        1
+                        if get_attr_safe(ci_analysis, "system_success_rate", 100) < 70
+                        else 3
+                    ),
                 )
             )
 
         # P4: Configuration Issues
         ci_config_analysis = enhanced_analysis.get("ci_config_analysis", {})
         if hasattr(ci_config_analysis, "best_practices_summary"):
-            avg_score = ci_config_analysis.best_practices_summary.get("avg_score", 100)
+            avg_score = get_attr_safe(
+                ci_config_analysis, "best_practices_summary", {}
+            ).get("avg_score", 100)
             if avg_score < 60:
                 problematic_configs = []
                 if hasattr(ci_config_analysis, "problematic_configs"):
                     problematic_configs = [
-                        c["repository"] for c in ci_config_analysis.problematic_configs
+                        c["repository"]
+                        for c in get_attr_safe(
+                            ci_config_analysis, "problematic_configs", []
+                        )
                     ]
                 issues.append(
                     CriticalIssue(
@@ -148,11 +181,13 @@ class EnhancedHTMLReportGenerator:
 
         # P6: Performance Issues
         performance_analysis = enhanced_analysis.get("performance_analysis", {})
-        if (
-            hasattr(performance_analysis, "worst_performers")
-            and performance_analysis.worst_performers
+        if hasattr(performance_analysis, "worst_performers") and get_attr_safe(
+            performance_analysis, "worst_performers", []
         ):
-            slow_repos = [p["repo"] for p in performance_analysis.worst_performers]
+            slow_repos = [
+                p["repo"]
+                for p in get_attr_safe(performance_analysis, "worst_performers", [])
+            ]
             issues.append(
                 CriticalIssue(
                     title="Performance Optimization Needed",
@@ -278,7 +313,8 @@ class EnhancedHTMLReportGenerator:
         if hasattr(ci_config_analysis, "projects_with_ci_config"):
             total_projects = len(repositories)
             ci_coverage = (
-                ci_config_analysis.projects_with_ci_config / total_projects
+                get_attr_safe(ci_config_analysis, "projects_with_ci_config", 0)
+                / total_projects
                 if total_projects > 0
                 else 0
             )
@@ -308,12 +344,13 @@ class EnhancedHTMLReportGenerator:
         performance_analysis = enhanced_analysis.get("performance_analysis", {})
         if hasattr(performance_analysis, "projects_using_cache"):
             total_with_ci = (
-                ci_config_analysis.projects_with_ci_config
+                get_attr_safe(ci_config_analysis, "projects_with_ci_config", 1)
                 if hasattr(ci_config_analysis, "projects_with_ci_config")
                 else 1
             )
             cache_usage = (
-                performance_analysis.projects_using_cache / total_with_ci
+                get_attr_safe(performance_analysis, "projects_using_cache", 0)
+                / total_with_ci
                 if total_with_ci > 0
                 else 0
             )
@@ -322,7 +359,7 @@ class EnhancedHTMLReportGenerator:
                 practices.append(
                     BestPractice(
                         title="⚡ Pipeline Caching for 5x Speed",
-                        description=f"Only {performance_analysis.projects_using_cache}/{total_with_ci} CI projects use caching - massive speed opportunity",
+                        description=f"Only {get_attr_safe(performance_analysis, 'projects_using_cache', 0)}/{total_with_ci} CI projects use caching - massive speed opportunity",
                         impact="high",
                         effort="low",
                         repositories=[],
@@ -331,7 +368,7 @@ class EnhancedHTMLReportGenerator:
                             "# Add to .gitlab-ci.yml: cache: paths: [node_modules/, .m2/repository/]",
                             "# Enable Docker layer caching: DOCKER_DRIVER=overlay2",
                             "# Expected result: 3-5x faster builds, 80% less CI resource usage",
-                            f"# Target: Implement caching in {total_with_ci - performance_analysis.projects_using_cache} remaining projects",
+                            f"# Target: Implement caching in {total_with_ci - get_attr_safe(performance_analysis, 'projects_using_cache', 0)} remaining projects",
                         ],
                     )
                 )
@@ -340,12 +377,12 @@ class EnhancedHTMLReportGenerator:
         issue_analysis = enhanced_analysis.get("issue_analysis", {})
         if (
             hasattr(issue_analysis, "system_avg_age_days")
-            and issue_analysis.system_avg_age_days > 20
+            and get_attr_safe(issue_analysis, "system_avg_age_days", 0) > 20
         ):
             practices.append(
                 BestPractice(
                     title="Implement Issue Triage Process",
-                    description=f"Average issue age is {issue_analysis.system_avg_age_days:.1f} days - too long for healthy development",
+                    description=f"Average issue age is {get_attr_safe(issue_analysis, 'system_avg_age_days', 0):.1f} days - too long for healthy development",
                     impact="medium",
                     effort="low",
                     repositories=[],
@@ -456,8 +493,8 @@ class EnhancedHTMLReportGenerator:
     ) -> str:
         """Generate the complete enhanced dashboard."""
 
-        if not enhanced_analysis:
-            # Fallback for basic analysis
+        if enhanced_analysis is None:
+            # Fallback for basic analysis only when explicitly None
             return self._generate_basic_dashboard(
                 repositories, output_file, enhanced_kpis_requested
             )
@@ -479,6 +516,11 @@ class EnhancedHTMLReportGenerator:
         performance_stats: Any,
     ) -> str:
         """Build the complete enhanced HTML dashboard."""
+
+        # Store repositories and enhanced_analysis for use in tabs
+        # Always convert to dicts for consistent dashboard compatibility
+        self._repositories = self._convert_repositories_to_dicts(repositories)
+        self.enhanced_analysis = enhanced_analysis
 
         # Extract analysis results
         issue_analysis = enhanced_analysis.get("issue_analysis", {})
@@ -595,6 +637,18 @@ class EnhancedHTMLReportGenerator:
                             <i class="fas fa-rocket me-2"></i>⚡ Performance (P6)
                         </button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="actionable-tab" data-bs-toggle="tab"
+                                data-bs-target="#actionable" type="button" role="tab">
+                            <i class="fas fa-tasks me-2"></i>🎯 Actions (A1)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="comprehensive-tab" data-bs-toggle="tab"
+                                data-bs-target="#comprehensive" type="button" role="tab">
+                            <i class="fas fa-chart-line me-2"></i>📊 Comprehensive (C1)
+                        </button>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -634,6 +688,16 @@ class EnhancedHTMLReportGenerator:
             <!-- Performance Tab (P6) -->
             <div class="tab-pane fade" id="performance" role="tabpanel">
                 {self._generate_performance_tab(performance_analysis, performance_metrics)}
+            </div>
+
+            <!-- Actionable Dashboard Tab (A1) -->
+            <div class="tab-pane fade" id="actionable" role="tabpanel">
+                {self._generate_actionable_tab()}
+            </div>
+
+            <!-- Comprehensive Dashboard Tab (C1) -->
+            <div class="tab-pane fade" id="comprehensive" role="tabpanel">
+                {self._generate_comprehensive_tab()}
             </div>
         </div>
     </div>
@@ -825,50 +889,50 @@ class EnhancedHTMLReportGenerator:
         # Collect alerts from all analyses
         if (
             hasattr(issue_analysis, "red_projects_count")
-            and issue_analysis.red_projects_count > 0
+            and get_attr_safe(issue_analysis, "red_projects_count", 0) > 0
         ):
             alerts.append(
-                f"🔴 {issue_analysis.red_projects_count} projects with critical issue backlogs"
+                f"🔴 {get_attr_safe(issue_analysis, 'red_projects_count', 0)} projects with critical issue backlogs"
             )
 
         if (
             hasattr(mr_analysis, "flagged_repositories")
-            and len(mr_analysis.flagged_repositories) > 0
+            and len(get_attr_safe(mr_analysis, "flagged_repositories", [])) > 0
         ):
             alerts.append(
-                f"🟡 {len(mr_analysis.flagged_repositories)} projects with long MR lead times"
+                f"🟡 {len(get_attr_safe(mr_analysis, 'flagged_repositories', []))} projects with long MR lead times"
             )
 
         if (
             hasattr(ci_analysis, "problematic_projects")
-            and len(ci_analysis.problematic_projects) > 0
+            and len(get_attr_safe(ci_analysis, "problematic_projects", [])) > 0
         ):
             alerts.append(
-                f"🟠 {len(ci_analysis.problematic_projects)} projects with CI/CD issues"
+                f"🟠 {len(get_attr_safe(ci_analysis, 'problematic_projects', []))} projects with CI/CD issues"
             )
 
         if (
             hasattr(ci_config_analysis, "problematic_configs")
-            and len(ci_config_analysis.problematic_configs) > 0
+            and len(get_attr_safe(ci_config_analysis, "problematic_configs", [])) > 0
         ):
             alerts.append(
-                f"⚙️ {len(ci_config_analysis.problematic_configs)} projects with config problems"
+                f"⚙️ {len(get_attr_safe(ci_config_analysis, 'problematic_configs', []))} projects with config problems"
             )
 
         if (
             hasattr(submodule_analysis, "circular_dependencies")
-            and len(submodule_analysis.circular_dependencies) > 0
+            and len(get_attr_safe(submodule_analysis, "circular_dependencies", [])) > 0
         ):
             alerts.append(
-                f"🔄 {len(submodule_analysis.circular_dependencies)} circular dependencies detected"
+                f"🔄 {len(get_attr_safe(submodule_analysis, 'circular_dependencies', []))} circular dependencies detected"
             )
 
         if (
             hasattr(performance_analysis, "worst_performers")
-            and len(performance_analysis.worst_performers) > 0
+            and len(get_attr_safe(performance_analysis, "worst_performers", [])) > 0
         ):
             alerts.append(
-                f"⚡ {len(performance_analysis.worst_performers)} projects need performance optimization"
+                f"⚡ {len(get_attr_safe(performance_analysis, 'worst_performers', []))} projects need performance optimization"
             )
 
         if not alerts:
@@ -1104,30 +1168,6 @@ class EnhancedHTMLReportGenerator:
                 }}
             }});
         </script>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table data-table" id="repositoryTable">
-                                <thead>
-                                    <tr>
-                                        <th>Repository</th>
-                                        <th>Issues</th>
-                                        <th>MR Lead Time</th>
-                                        <th>CI Status</th>
-                                        <th>Config Score</th>
-                                        <th>Performance</th>
-                                        <th>Overall Health</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {self._generate_repository_rows(repositories, enhanced_analysis)}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
         """
 
     def _generate_repository_rows(self, repositories, enhanced_analysis) -> str:
@@ -1236,7 +1276,11 @@ class EnhancedHTMLReportGenerator:
 
     def _generate_issues_tab(self, issue_analysis, issue_metrics) -> str:
         """Generate the Issues tab (P1) content."""
-        if not hasattr(issue_analysis, "total_projects"):
+        if (
+            not issue_analysis
+            or not isinstance(issue_analysis, dict)
+            or "total_projects" not in issue_analysis
+        ):
             return (
                 "<div class='alert alert-info'>No issue analysis data available.</div>"
             )
@@ -1264,25 +1308,25 @@ class EnhancedHTMLReportGenerator:
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Total Projects:</span>
-                                <strong>{issue_analysis.total_projects}</strong>
+                                <strong>{get_attr_safe(issue_analysis, 'total_projects', 0)}</strong>
                             </div>
                         </div>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Open Issues:</span>
-                                <strong class="text-warning">{issue_analysis.total_open_issues}</strong>
+                                <strong class="text-warning">{get_attr_safe(issue_analysis, 'total_open_issues', 0)}</strong>
                             </div>
                         </div>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Avg Age:</span>
-                                <strong>{issue_analysis.system_avg_age_days:.1f} days</strong>
+                                <strong>{get_attr_safe(issue_analysis, 'system_avg_age_days', 0):.1f} days</strong>
                             </div>
                         </div>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>90th Percentile:</span>
-                                <strong>{issue_analysis.system_90th_percentile_days:.1f} days</strong>
+                                <strong>{get_attr_safe(issue_analysis, 'system_90th_percentile_days', 0):.1f} days</strong>
                             </div>
                         </div>
                     </div>
@@ -1294,11 +1338,11 @@ class EnhancedHTMLReportGenerator:
                     </div>
                     <div class="card-body">
                         <div class="text-center">
-                            <div class="fs-1">{issue_analysis.health_status}</div>
+                            <div class="fs-1">{get_attr_safe(issue_analysis, 'health_status', 'Unknown')}</div>
                             <div class="mt-2">
-                                <span class="badge bg-success me-1">🟢 {issue_analysis.green_projects_count}</span>
-                                <span class="badge bg-warning me-1">🟡 {issue_analysis.yellow_projects_count}</span>
-                                <span class="badge bg-danger">🔴 {issue_analysis.red_projects_count}</span>
+                                <span class="badge bg-success me-1">🟢 {get_attr_safe(issue_analysis, 'green_projects_count', 0)}</span>
+                                <span class="badge bg-warning me-1">🟡 {get_attr_safe(issue_analysis, 'yellow_projects_count', 0)}</span>
+                                <span class="badge bg-danger">🔴 {get_attr_safe(issue_analysis, 'red_projects_count', 0)}</span>
                             </div>
                         </div>
                     </div>
@@ -1375,7 +1419,11 @@ class EnhancedHTMLReportGenerator:
 
     def _generate_mr_tab(self, mr_analysis, mr_metrics) -> str:
         """Generate the MR tab (P2) content."""
-        if not hasattr(mr_analysis, "total_projects"):
+        if (
+            not mr_analysis
+            or not isinstance(mr_analysis, dict)
+            or "total_projects" not in mr_analysis
+        ):
             return "<div class='alert alert-info'>No MR analysis data available.</div>"
 
         return f"""
@@ -1401,25 +1449,25 @@ class EnhancedHTMLReportGenerator:
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Total MRs (180d):</span>
-                                <strong>{mr_analysis.total_mrs_180d}</strong>
+                                <strong>{get_attr_safe(mr_analysis, 'total_mrs_180d', 0)}</strong>
                             </div>
                         </div>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Avg Lead Time:</span>
-                                <strong class="text-info">{mr_analysis.avg_system_lead_time / 24:.1f} days</strong>
+                                <strong class="text-info">{get_attr_safe(mr_analysis, 'avg_system_lead_time', 0) / 24:.1f} days</strong>
                             </div>
                         </div>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Median Lead Time:</span>
-                                <strong>{mr_analysis.median_system_lead_time / 24:.1f} days</strong>
+                                <strong>{get_attr_safe(mr_analysis, 'median_system_lead_time', 0) / 24:.1f} days</strong>
                             </div>
                         </div>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Avg Reviews:</span>
-                                <strong>{mr_analysis.avg_review_comments:.1f} comments</strong>
+                                <strong>{get_attr_safe(mr_analysis, 'avg_review_comments', 0):.1f} comments</strong>
                             </div>
                         </div>
                     </div>
@@ -1430,10 +1478,10 @@ class EnhancedHTMLReportGenerator:
                         <h5>System Health</h5>
                     </div>
                     <div class="card-body text-center">
-                        <div class="fs-1">{mr_analysis.health_status}</div>
+                        <div class="fs-1">{get_attr_safe(mr_analysis, 'health_status', 'Unknown')}</div>
                         <div class="mt-2">
-                            <span class="badge bg-danger me-1">🔴 {len(mr_analysis.flagged_repositories)} Flagged</span>
-                            <span class="badge bg-success">🟢 {mr_analysis.total_projects - len(mr_analysis.flagged_repositories)} Healthy</span>
+                            <span class="badge bg-danger me-1">🔴 {len(get_attr_safe(mr_analysis, 'flagged_repositories', []))} Flagged</span>
+                            <span class="badge bg-success">🟢 {get_attr_safe(mr_analysis, 'total_projects', 0) - len(get_attr_safe(mr_analysis, 'flagged_repositories', []))} Healthy</span>
                         </div>
                     </div>
                 </div>
@@ -1443,7 +1491,11 @@ class EnhancedHTMLReportGenerator:
 
     def _generate_ci_tab(self, ci_analysis, ci_metrics) -> str:
         """Generate the CI tab (P3) content."""
-        if not hasattr(ci_analysis, "total_projects"):
+        if (
+            not ci_analysis
+            or not isinstance(ci_analysis, dict)
+            or "total_projects" not in ci_analysis
+        ):
             return "<div class='alert alert-info'>No CI analysis data available.</div>"
 
         return f"""
@@ -1467,23 +1519,23 @@ class EnhancedHTMLReportGenerator:
                     </div>
                     <div class="card-body">
                         <div class="text-center">
-                            <div class="display-4 text-{'success' if ci_analysis.system_success_rate >= 90 else 'warning' if ci_analysis.system_success_rate >= 80 else 'danger'}">
-                                {ci_analysis.system_success_rate:.1f}%
+                            <div class="display-4 text-{'success' if get_attr_safe(ci_analysis, 'system_success_rate', 100) >= 90 else 'warning' if get_attr_safe(ci_analysis, 'system_success_rate', 100) >= 80 else 'danger'}">
+                                {get_attr_safe(ci_analysis, 'system_success_rate', 100):.1f}%
                             </div>
                             <p class="text-muted">System Success Rate</p>
                         </div>
                         <hr>
                         <div class="row text-center">
                             <div class="col">
-                                <div class="h5">{ci_analysis.total_pipelines_30d}</div>
+                                <div class="h5">{get_attr_safe(ci_analysis, 'total_pipelines_30d', 0)}</div>
                                 <small class="text-muted">Total Pipelines</small>
                             </div>
                             <div class="col">
-                                <div class="h5">{ci_analysis.projects_with_ci}</div>
+                                <div class="h5">{get_attr_safe(ci_analysis, 'projects_with_ci', 0)}</div>
                                 <small class="text-muted">Projects with CI</small>
                             </div>
                             <div class="col">
-                                <div class="h5">{ci_analysis.projects_with_jenkins}</div>
+                                <div class="h5">{get_attr_safe(ci_analysis, 'projects_with_jenkins', 0)}</div>
                                 <small class="text-muted">Jenkins Integrations</small>
                             </div>
                         </div>
@@ -1495,7 +1547,11 @@ class EnhancedHTMLReportGenerator:
 
     def _generate_config_tab(self, ci_config_analysis, ci_config_metrics) -> str:
         """Generate the Configuration tab (P4) content."""
-        if not hasattr(ci_config_analysis, "total_projects"):
+        if (
+            not ci_config_analysis
+            or not isinstance(ci_config_analysis, dict)
+            or "total_projects" not in ci_config_analysis
+        ):
             return "<div class='alert alert-info'>No CI configuration analysis data available.</div>"
 
         return f"""
@@ -1521,19 +1577,19 @@ class EnhancedHTMLReportGenerator:
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Projects with CI Config:</span>
-                                <strong>{ci_config_analysis.projects_with_ci_config}/{ci_config_analysis.total_projects}</strong>
+                                <strong>{get_attr_safe(ci_config_analysis, 'projects_with_ci_config', 0)}/{get_attr_safe(ci_config_analysis, 'total_projects', 0)}</strong>
                             </div>
                         </div>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Avg Complexity:</span>
-                                <strong>{ci_config_analysis.avg_config_complexity:.0f} lines</strong>
+                                <strong>{get_attr_safe(ci_config_analysis, 'avg_config_complexity', 0):.0f} lines</strong>
                             </div>
                         </div>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Avg Best Practices:</span>
-                                <strong class="text-{'success' if ci_config_analysis.best_practices_summary['avg_score'] >= 80 else 'warning' if ci_config_analysis.best_practices_summary['avg_score'] >= 60 else 'danger'}">{ci_config_analysis.best_practices_summary['avg_score']:.1f}/100</strong>
+                                <strong class="text-{'success' if get_attr_safe(ci_config_analysis, 'best_practices_summary', {}).get('avg_score', 0) >= 80 else 'warning' if get_attr_safe(ci_config_analysis, 'best_practices_summary', {}).get('avg_score', 0) >= 60 else 'danger'}">{get_attr_safe(ci_config_analysis, 'best_practices_summary', {}).get('avg_score', 0):.1f}/100</strong>
                             </div>
                         </div>
                     </div>
@@ -1545,9 +1601,9 @@ class EnhancedHTMLReportGenerator:
                     </div>
                     <div class="card-body">
                         <div class="text-center">
-                            <span class="badge bg-success me-1">🟢 {ci_config_analysis.best_practices_summary['excellent_configs']} Excellent</span>
-                            <span class="badge bg-warning me-1">🟡 {ci_config_analysis.best_practices_summary['good_configs']} Good</span>
-                            <span class="badge bg-danger">🔴 {ci_config_analysis.best_practices_summary['needs_improvement']} Poor</span>
+                            <span class="badge bg-success me-1">🟢 {get_attr_safe(ci_config_analysis, 'best_practices_summary', {}).get('excellent_configs', 0)} Excellent</span>
+                            <span class="badge bg-warning me-1">🟡 {get_attr_safe(ci_config_analysis, 'best_practices_summary', {}).get('good_configs', 0)} Good</span>
+                            <span class="badge bg-danger">🔴 {get_attr_safe(ci_config_analysis, 'best_practices_summary', {}).get('needs_improvement', 0)} Poor</span>
                         </div>
                     </div>
                 </div>
@@ -1557,7 +1613,11 @@ class EnhancedHTMLReportGenerator:
 
     def _generate_network_tab(self, submodule_analysis, submodule_metrics) -> str:
         """Generate the Network tab (P5) content."""
-        if not hasattr(submodule_analysis, "total_projects"):
+        if (
+            not submodule_analysis
+            or not isinstance(submodule_analysis, dict)
+            or "total_projects" not in submodule_analysis
+        ):
             return "<div class='alert alert-info'>No submodule network analysis data available.</div>"
 
         return f"""
@@ -1573,7 +1633,7 @@ class EnhancedHTMLReportGenerator:
                                 <div class="text-center">
                                     <i class="fas fa-project-diagram fa-3x mb-3"></i>
                                     <p>Network visualization would be rendered here<br>
-                                    <small>Submodule relationships: {submodule_analysis.total_submodule_relationships}</small></p>
+                                    <small>Submodule relationships: {get_attr_safe(submodule_analysis, 'total_submodule_relationships', 0)}</small></p>
                                 </div>
                             </div>
                         </div>
@@ -1589,25 +1649,25 @@ class EnhancedHTMLReportGenerator:
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Projects with Submodules:</span>
-                                <strong>{submodule_analysis.projects_with_submodules}/{submodule_analysis.total_projects}</strong>
+                                <strong>{get_attr_safe(submodule_analysis, 'projects_with_submodules', 0)}/{get_attr_safe(submodule_analysis, 'total_projects', 0)}</strong>
                             </div>
                         </div>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Total Relationships:</span>
-                                <strong>{submodule_analysis.total_submodule_relationships}</strong>
+                                <strong>{get_attr_safe(submodule_analysis, 'total_submodule_relationships', 0)}</strong>
                             </div>
                         </div>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Network Depth:</span>
-                                <strong>{submodule_analysis.network_depth}</strong>
+                                <strong>{get_attr_safe(submodule_analysis, 'network_depth', 0)}</strong>
                             </div>
                         </div>
                         <div class="mb-3">
                             <div class="d-flex justify-content-between">
                                 <span>Circular Dependencies:</span>
-                                <strong class="text-{'danger' if len(submodule_analysis.circular_dependencies) > 0 else 'success'}">{len(submodule_analysis.circular_dependencies)}</strong>
+                                <strong class="text-{'danger' if len(get_attr_safe(submodule_analysis, 'circular_dependencies', [])) > 0 else 'success'}">{len(get_attr_safe(submodule_analysis, 'circular_dependencies', []))}</strong>
                             </div>
                         </div>
                     </div>
@@ -1618,7 +1678,7 @@ class EnhancedHTMLReportGenerator:
                         <h5>Network Health</h5>
                     </div>
                     <div class="card-body text-center">
-                        <div class="fs-1">{submodule_analysis.health_status}</div>
+                        <div class="fs-1">{get_attr_safe(submodule_analysis, 'health_status', 'Unknown')}</div>
                     </div>
                 </div>
             </div>
@@ -1628,26 +1688,93 @@ class EnhancedHTMLReportGenerator:
     def _generate_performance_tab(
         self, performance_analysis, performance_metrics
     ) -> str:
-        """Generate the Performance tab (P6) content."""
-        if not hasattr(performance_analysis, "total_projects"):
+        """Generate the Performance tab (P6) content with integrated performance analyzer."""
+
+        # Generate performance optimization content from our analyzer
+        if hasattr(self, "_repositories"):
+            # _repositories are already converted to dicts in _build_enhanced_html
+            analyzer = PerformanceAnalyzer(self._repositories)
+            performance_report = analyzer.generate_performance_report()
+            performance_content = create_performance_dashboard_content(
+                performance_report
+            )
+
+            # Create summary metrics
+            summary = performance_report["summary"]
+
+            return f"""
+            <div class="alert alert-warning mb-4" role="alert">
+                <h4 class="alert-heading">🚨 Performance Crisis Detected!</h4>
+                <p class="mb-0">
+                    <strong>{summary['total_issues']} performance issues</strong> identified with 
+                    <strong>{summary['total_waste_gb']:.1f} GB storage waste</strong> and 
+                    <strong>{summary['optimization_potential_percent']:.0f}% optimization potential</strong>
+                </p>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-lg-3 col-md-6">
+                    <div class="card border-danger">
+                        <div class="card-body text-center">
+                            <div class="display-4 text-danger">{summary['critical_issues']}</div>
+                            <p class="card-text">Critical Issues</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="card border-warning">
+                        <div class="card-body text-center">
+                            <div class="display-4 text-warning">{summary['high_issues']}</div>
+                            <p class="card-text">High Priority</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="card border-success">
+                        <div class="card-body text-center">
+                            <div class="display-4 text-success">{summary['potential_savings_gb']:.0f} GB</div>
+                            <p class="card-text">Potential Savings</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="card border-info">
+                        <div class="card-body text-center">
+                            <div class="display-4 text-info">{summary['optimization_potential_percent']:.0f}%</div>
+                            <p class="card-text">Optimization Potential</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <h3 class="mb-4">🔧 Performance Issues & Solutions</h3>
+            {performance_content}
+            """
+
+        # Fallback to original performance analysis if repositories not available
+        if (
+            not performance_analysis
+            or not isinstance(performance_analysis, dict)
+            or "total_projects" not in performance_analysis
+        ):
             return "<div class='alert alert-info'>No performance analysis data available.</div>"
 
         cache_adoption = (
             (
-                performance_analysis.projects_using_cache
-                / performance_analysis.total_projects
+                performance_analysis.get("projects_using_cache", 0)
+                / performance_analysis.get("total_projects", 1)
                 * 100
             )
-            if performance_analysis.total_projects > 0
+            if performance_analysis.get("total_projects", 0) > 0
             else 0
         )
         lfs_adoption = (
             (
-                performance_analysis.projects_using_lfs
-                / performance_analysis.total_projects
+                performance_analysis.get("projects_using_lfs", 0)
+                / performance_analysis.get("total_projects", 1)
                 * 100
             )
-            if performance_analysis.total_projects > 0
+            if performance_analysis.get("total_projects", 0) > 0
             else 0
         )
 
@@ -1672,8 +1799,8 @@ class EnhancedHTMLReportGenerator:
                     </div>
                     <div class="card-body">
                         <div class="text-center">
-                            <div class="display-4 text-{'success' if performance_analysis.avg_pipeline_duration < 10 else 'warning' if performance_analysis.avg_pipeline_duration < 30 else 'danger'}">
-                                {performance_analysis.avg_pipeline_duration:.1f}min
+                            <div class="display-4 text-{'success' if get_attr_safe(performance_analysis, 'avg_pipeline_duration', 0) < 10 else 'warning' if get_attr_safe(performance_analysis, 'avg_pipeline_duration', 0) < 30 else 'danger'}">
+                                {get_attr_safe(performance_analysis, 'avg_pipeline_duration', 0):.1f}min
                             </div>
                             <p class="text-muted">Average Pipeline Duration</p>
                         </div>
@@ -1688,7 +1815,7 @@ class EnhancedHTMLReportGenerator:
                                 <small class="text-muted">LFS Usage</small>
                             </div>
                             <div class="col">
-                                <div class="h5">{len(performance_analysis.best_performers)}</div>
+                                <div class="h5">{len(get_attr_safe(performance_analysis, 'best_performers', []))}</div>
                                 <small class="text-muted">Top Performers</small>
                             </div>
                         </div>
@@ -1697,6 +1824,62 @@ class EnhancedHTMLReportGenerator:
             </div>
         </div>
         """
+
+    def _generate_actionable_tab(self) -> str:
+        """Generate the Actionable Dashboard tab (A1) content."""
+        if hasattr(self, "_repositories"):
+            # _repositories are already converted to dicts in _build_enhanced_html
+            actionable_dashboard = ActionableDashboard(
+                self._repositories, self.enhanced_analysis
+            )
+            actions = actionable_dashboard.analyze_and_generate_actions()
+            return actionable_dashboard.generate_html_dashboard(actions)
+        else:
+            return """
+            <div class="alert alert-warning">
+                <h4>⚠️ Actionable Dashboard Unavailable</h4>
+                <p>Repository data not available for actionable analysis.</p>
+            </div>
+            """
+
+    def _generate_comprehensive_tab(self) -> str:
+        """Generate the Comprehensive Dashboard tab (C1) content."""
+        if hasattr(self, "_repositories"):
+            # _repositories are already converted to dicts in _build_enhanced_html
+            comprehensive_dashboard = ComprehensiveDashboard(
+                self._repositories, self.enhanced_analysis
+            )
+            return comprehensive_dashboard.generate_html_dashboard()
+        else:
+            return """
+            <div class="alert alert-warning">
+                <h4>⚠️ Comprehensive Dashboard Unavailable</h4>
+                <p>Repository data not available for comprehensive analysis.</p>
+            </div>
+            """
+
+    def _convert_repositories_to_dicts(self, repositories):
+        """Convert RepositoryStats objects to dicts for dashboard compatibility."""
+        repositories_as_dicts = []
+        for repo in repositories:
+            if hasattr(repo, "__dict__"):  # RepositoryStats dataclass
+                repo_dict = {
+                    "id": repo.id,
+                    "name": repo.name,
+                    "path_with_namespace": repo.path_with_namespace,
+                    "size_mb": repo.size_mb,
+                    "artifacts_size_mb": repo.artifacts_size_mb,
+                    "lfs_size_mb": repo.lfs_size_mb,
+                    "pipeline_count": repo.pipeline_count,
+                    "last_activity": repo.last_activity,
+                    "last_activity_at": repo.last_activity,  # Alias for compatibility
+                    "open_issues": getattr(repo, "open_issues", 0),
+                    "open_mrs": getattr(repo, "open_mrs", 0),
+                }
+                repositories_as_dicts.append(repo_dict)
+            else:  # Already a dict
+                repositories_as_dicts.append(repo)
+        return repositories_as_dicts
 
     def _get_enhanced_javascript(self) -> str:
         """Enhanced JavaScript for the dashboard."""
@@ -1709,7 +1892,9 @@ class EnhancedHTMLReportGenerator:
                 'p3': 'ci-tab',
                 'p4': 'config-tab',
                 'p5': 'network-tab',
-                'p6': 'performance-tab'
+                'p6': 'performance-tab',
+                'a1': 'actionable-tab',
+                'c1': 'comprehensive-tab'
             };
 
             const tabId = tabMap[tabName] || tabName + '-tab';
